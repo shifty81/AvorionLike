@@ -2,6 +2,8 @@
 
 A custom game engine implementation inspired by Avorion, built as a standalone Windows application using C# and .NET 9.0.
 
+> **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
+
 ## Overview
 
 AvorionLike is a custom-built game engine that replicates the core systems found in Avorion. It features a modular architecture with support for voxel-based ship building, Newtonian physics, procedural generation, multiplayer networking, and extensive modding capabilities through Lua scripting.
