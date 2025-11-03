@@ -94,15 +94,60 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `LootSystem` - Generates loot drops
 - `TradingSystem` - Manages resource trading
 
+### 9. Development Tools
+- **Debug Renderer** - Debug visualization for game objects and physics
+- **Performance Profiler** - FPS and frame timing tracking
+- **Memory Tracker** - Memory usage monitoring (including GPU when available)
+- **OpenGL Debugger** - Error detection and logging for graphics
+- **Debug Console** - Runtime command console (press `` ` `` key)
+- **Script Compiler** - Runtime script compilation and hot-reloading
+
+**Key Classes:**
+- `DevToolsManager` - Manages all development tools
+- `DebugRenderer` - Visual debug rendering
+- `PerformanceProfiler` - Performance metrics tracking
+- `MemoryTracker` - Memory usage monitoring
+- `OpenGLDebugger` - OpenGL error tracking
+- `DebugConsole` - Interactive debug console
+- `ScriptCompiler` - Runtime script execution
+
 ## Getting Started
 
 ### Prerequisites
-- .NET 9.0 SDK or later
-- Windows, Linux, or macOS
+
+#### For Visual Studio 2022 Users (Recommended)
+- **Visual Studio 2022** (Community, Professional, or Enterprise)
+  - Download: https://visualstudio.microsoft.com/vs/
+  - Required Workloads: .NET desktop development
+- **.NET 9.0 SDK or later** (included with Visual Studio 2022)
+- **Windows** (for Visual Studio 2022)
+
+#### For Command Line / Other IDEs
+- **.NET 9.0 SDK or later**
+  - Download: https://dotnet.microsoft.com/download
+- **Windows, Linux, or macOS**
+- Any text editor or IDE (VS Code, Rider, etc.)
 
 **Note:** The current implementation uses a cross-platform console interface. For a Windows-specific GUI version using Windows Forms, modify the `.csproj` file to target `net9.0-windows` and enable Windows Forms by adding `<UseWindowsForms>true</UseWindowsForms>` to the PropertyGroup section. This requires building on a Windows machine.
 
-### Building the Project
+### Building with Visual Studio 2022
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/shifty81/AvorionLike.git
+   cd AvorionLike
+   ```
+
+2. **Open the solution**
+   - Open `AvorionLike.sln` in Visual Studio 2022
+   - The solution will automatically restore NuGet packages
+
+3. **Build and Run**
+   - Press `F5` to build and run with debugging
+   - Or press `Ctrl+F5` to run without debugging
+   - Or use Build → Build Solution (Ctrl+Shift+B)
+
+### Building with Command Line
 
 ```bash
 # Clone the repository
@@ -132,6 +177,26 @@ The application provides an interactive console menu with various demos:
 7. **Scripting** - Execute Lua scripts
 8. **Multiplayer** - Start multiplayer server
 9. **Statistics** - View engine statistics
+10. **Development Tools** - Access debug console and profiling tools
+
+#### Using Development Tools
+
+Press the backtick key (`` ` ``) during runtime to open the debug console. Available console commands:
+
+- `help` - Show all available commands
+- `fps` - Display current FPS and frame timing
+- `profile` - Generate performance profile report
+- `memory` - Show memory usage statistics
+- `glerrors` - Display OpenGL errors (when rendering is active)
+- `scripts` - List loaded Lua scripts
+- `debug` - Toggle debug rendering
+- `devtools` - Show status of all development tools
+- `compile <file>` - Compile and load a Lua script
+- `reload <script>` - Reload a previously loaded script
+- `lua <code>` - Execute Lua code directly
+- `gc` - Force garbage collection
+- `clear` - Clear console output
+- `exit` - Close the debug console
 
 ## Architecture
 
@@ -160,8 +225,17 @@ AvorionLike/
 │   │   └── CraftingSystem.cs
 │   ├── RPG/              # RPG elements
 │   │   └── RPGSystems.cs
+│   ├── DevTools/         # Development tools
+│   │   ├── DevToolsManager.cs
+│   │   ├── DebugRenderer.cs
+│   │   ├── PerformanceProfiler.cs
+│   │   ├── MemoryTracker.cs
+│   │   ├── OpenGLDebugger.cs
+│   │   ├── DebugConsole.cs
+│   │   └── ScriptCompiler.cs
 │   └── GameEngine.cs     # Main engine class
-└── Program.cs            # Application entry point
+├── Program.cs            # Application entry point
+└── AvorionLike.csproj    # Project configuration
 ```
 
 ## Example Usage
@@ -220,9 +294,12 @@ engine.StartServer(27015); // Start on port 27015
 ## Technologies Used
 
 - **C# / .NET 9.0** - Core programming language and framework
-- **NLua** - Lua scripting integration for modding
+- **NLua (v1.7.3)** - Lua scripting integration for modding
 - **System.Numerics** - Vector math for physics and positions
 - **System.Net.Sockets** - TCP networking for multiplayer
+- **Visual Studio 2022** - Primary development environment
+
+For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 
 ## Features
 
@@ -237,6 +314,9 @@ engine.StartServer(27015); // Start on port 27015
 ✅ RPG progression and faction systems  
 ✅ Trading system  
 ✅ Loot generation  
+✅ Development tools (Debug Console, Profiler, Memory Tracker)  
+✅ Runtime script compilation and hot-reloading  
+✅ Visual Studio 2022 solution support  
 
 ## Future Enhancements
 
@@ -255,12 +335,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-Inspired by the game Avorion developed by Boxelware.
+Inspired by the game [Avorion](https://www.avorion.net/) developed by Boxelware.
+
+For detailed credits and acknowledgments of all libraries and inspirations used in this project, please see [CREDITS.md](CREDITS.md).
+
+**Note:** This project is not affiliated with, endorsed by, or connected to Boxelware or the official Avorion game. This is a fan-made educational implementation.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
-
-## Contact
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+- Setting up your development environment with Visual Studio 2022
+- Code style and conventions
+- How to submit changes
+- Development workflow
 
 For questions or feedback, please open an issue on GitHub.
