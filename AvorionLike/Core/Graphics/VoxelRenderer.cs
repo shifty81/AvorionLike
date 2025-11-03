@@ -15,6 +15,10 @@ public class VoxelRenderer : IDisposable
     private uint _vbo;
     private bool _disposed = false;
 
+    // Lighting configuration
+    private static readonly Vector3 DefaultLightPosition = new Vector3(100, 200, 100);
+    private static readonly Vector3 DefaultLightColor = new Vector3(1.0f, 1.0f, 1.0f);
+
     // Cube vertices (position + normal)
     private readonly float[] _cubeVertices = new[]
     {
@@ -155,7 +159,7 @@ void main()
         _shader = new Shader(_gl, vertexShader, fragmentShader);
     }
 
-    public void RenderVoxelStructure(VoxelStructureComponent structure, Camera camera, Vector3 entityPosition)
+    public void RenderVoxelStructure(VoxelStructureComponent structure, Camera camera, Vector3 entityPosition, float aspectRatio)
     {
         if (_shader == null) return;
 
@@ -163,13 +167,13 @@ void main()
         _gl.BindVertexArray(_vao);
 
         // Set lighting
-        _shader.SetVector3("lightPos", new Vector3(100, 200, 100));
-        _shader.SetVector3("lightColor", new Vector3(1.0f, 1.0f, 1.0f));
+        _shader.SetVector3("lightPos", DefaultLightPosition);
+        _shader.SetVector3("lightColor", DefaultLightColor);
         _shader.SetVector3("viewPos", camera.Position);
 
         // Set view and projection matrices
         _shader.SetMatrix4("view", camera.GetViewMatrix());
-        _shader.SetMatrix4("projection", camera.GetProjectionMatrix(16.0f / 9.0f));
+        _shader.SetMatrix4("projection", camera.GetProjectionMatrix(aspectRatio));
 
         // Render each voxel block
         foreach (var block in structure.Blocks)

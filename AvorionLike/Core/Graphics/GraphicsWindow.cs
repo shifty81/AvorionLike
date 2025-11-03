@@ -29,7 +29,6 @@ public class GraphicsWindow : IDisposable
     
     // Timing
     private float _deltaTime = 0.0f;
-    private float _lastFrame = 0.0f;
 
     // Input state
     private readonly HashSet<Key> _keysPressed = new();
@@ -59,7 +58,7 @@ public class GraphicsWindow : IDisposable
     private void OnLoad()
     {
         _gl = _window!.CreateOpenGL();
-        _inputContext = _window.CreateInput();
+        _inputContext = _window!.CreateInput();
 
         // Initialize camera
         _camera = new Camera(new Vector3(0, 50, 150));
@@ -96,7 +95,6 @@ public class GraphicsWindow : IDisposable
     private void OnUpdate(double deltaTime)
     {
         _deltaTime = (float)deltaTime;
-        _lastFrame += _deltaTime;
 
         if (_camera == null) return;
 
@@ -120,11 +118,14 @@ public class GraphicsWindow : IDisposable
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null) return;
+        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
         _gl.ClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+
+        // Calculate aspect ratio from window size
+        float aspectRatio = (float)_window.Size.X / _window.Size.Y;
 
         // Render all entities with voxel structures
         var entities = _gameEngine.EntityManager.GetAllEntities();
@@ -141,7 +142,7 @@ public class GraphicsWindow : IDisposable
                     position = physicsComponent.Position;
                 }
 
-                _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position);
+                _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
             }
         }
     }
