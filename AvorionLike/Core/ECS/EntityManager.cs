@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using AvorionLike.Core.Logging;
+using AvorionLike.Core.Events;
+using AvorionLike.Core.Common;
 
 namespace AvorionLike.Core.ECS;
 
@@ -16,8 +19,19 @@ public class EntityManager
     /// </summary>
     public Entity CreateEntity(string name = "Entity")
     {
+        ValidationHelper.ValidateNotNullOrEmpty(name, nameof(name));
+        
         var entity = new Entity(name);
         _entities[entity.Id] = entity;
+        
+        // Publish entity created event
+        EventSystem.Instance.QueueEvent(GameEvents.EntityCreated, new EntityEvent
+        {
+            EntityId = entity.Id,
+            EntityName = entity.Name
+        });
+        
+        Logger.Instance.Debug("EntityManager", $"Created entity: {entity.Name} ({entity.Id})");
         return entity;
     }
 
@@ -26,12 +40,23 @@ public class EntityManager
     /// </summary>
     public void DestroyEntity(Guid entityId)
     {
-        if (_entities.TryRemove(entityId, out _))
+        ValidationHelper.ValidateNotEmpty(entityId, nameof(entityId));
+        
+        if (_entities.TryRemove(entityId, out var entity))
         {
             foreach (var componentDict in _components.Values)
             {
                 componentDict.TryRemove(entityId, out _);
             }
+            
+            // Publish entity destroyed event
+            EventSystem.Instance.QueueEvent(GameEvents.EntityDestroyed, new EntityEvent
+            {
+                EntityId = entityId,
+                EntityName = entity.Name
+            });
+            
+            Logger.Instance.Debug("EntityManager", $"Destroyed entity: {entity.Name} ({entityId})");
         }
     }
 
@@ -40,6 +65,14 @@ public class EntityManager
     /// </summary>
     public T AddComponent<T>(Guid entityId, T component) where T : IComponent
     {
+        ValidationHelper.ValidateNotEmpty(entityId, nameof(entityId));
+        ValidationHelper.ValidateNotNull(component, nameof(component));
+        
+        if (!_entities.ContainsKey(entityId))
+        {
+            throw new InvalidOperationException($"Cannot add component to non-existent entity: {entityId}");
+        }
+        
         component.EntityId = entityId;
         var componentType = typeof(T);
         
@@ -49,6 +82,15 @@ public class EntityManager
         }
         
         _components[componentType][entityId] = component;
+        
+        // Publish component added event
+        EventSystem.Instance.QueueEvent(GameEvents.ComponentAdded, new EntityEvent
+        {
+            EntityId = entityId,
+            EntityName = _entities[entityId].Name
+        });
+        
+        Logger.Instance.Debug("EntityManager", $"Added {componentType.Name} to entity {entityId}");
         return component;
     }
 
