@@ -22,6 +22,7 @@ public class GraphicsWindow : IDisposable
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
     private HUDSystem? _hudSystem;
+    private MenuSystem? _menuSystem;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -73,6 +74,7 @@ public class GraphicsWindow : IDisposable
         // Initialize ImGui
         _imguiController = new ImGuiController(_gl, _window, _inputContext);
         _hudSystem = new HUDSystem(_gameEngine);
+        _menuSystem = new MenuSystem(_gameEngine);
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
@@ -104,7 +106,7 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _hudSystem == null) return;
+        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
@@ -113,8 +115,8 @@ public class GraphicsWindow : IDisposable
         var io = ImGuiNET.ImGui.GetIO();
         _uiWantsMouse = io.WantCaptureMouse;
 
-        // Process keyboard input for camera (only if UI doesn't want it)
-        if (!io.WantCaptureKeyboard)
+        // Process keyboard input for camera (only if UI doesn't want it and menu is not open)
+        if (!io.WantCaptureKeyboard && !_menuSystem.IsMenuOpen)
         {
             if (_keysPressed.Contains(Key.W))
                 _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
@@ -130,16 +132,20 @@ public class GraphicsWindow : IDisposable
                 _camera.ProcessKeyboard(CameraMovement.Down, _deltaTime);
         }
         
-        // Handle UI input
+        // Handle UI and menu input
         _hudSystem.HandleInput();
+        _menuSystem.HandleInput();
 
-        // Update game engine
-        _gameEngine.Update();
+        // Update game engine (pause if menu is open)
+        if (!_menuSystem.IsMenuOpen)
+        {
+            _gameEngine.Update();
+        }
     }
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null) return;
+        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -168,7 +174,17 @@ public class GraphicsWindow : IDisposable
         }
         
         // Render ImGui UI on top
-        _hudSystem.Render();
+        if (_menuSystem.IsMenuOpen)
+        {
+            // Only render menu when menu is open
+            _menuSystem.Render();
+        }
+        else
+        {
+            // Render HUD when menu is closed
+            _hudSystem.Render();
+        }
+        
         _imguiController.Render();
     }
 
