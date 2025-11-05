@@ -5,6 +5,7 @@ using System.Numerics;
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Physics;
+using AvorionLike.Core.UI;
 
 namespace AvorionLike.Core.Graphics;
 
@@ -19,6 +20,10 @@ public class GraphicsWindow : IDisposable
     private VoxelRenderer? _voxelRenderer;
     private Camera? _camera;
     private IInputContext? _inputContext;
+    private ImGuiController? _imguiController;
+    private HUDSystem? _hudSystem;
+    private MenuSystem? _menuSystem;
+    private InventoryUI? _inventoryUI;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -26,6 +31,7 @@ public class GraphicsWindow : IDisposable
     // Mouse state
     private Vector2 _lastMousePos;
     private bool _firstMouse = true;
+    private bool _uiWantsMouse = false;
     
     // Timing
     private float _deltaTime = 0.0f;
@@ -66,6 +72,12 @@ public class GraphicsWindow : IDisposable
         // Initialize renderer
         _voxelRenderer = new VoxelRenderer(_gl);
 
+        // Initialize ImGui
+        _imguiController = new ImGuiController(_gl, _window, _inputContext);
+        _hudSystem = new HUDSystem(_gameEngine);
+        _menuSystem = new MenuSystem(_gameEngine);
+        _inventoryUI = new InventoryUI(_gameEngine);
+
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
         _gl.Enable(EnableCap.CullFace);
@@ -80,7 +92,6 @@ public class GraphicsWindow : IDisposable
         foreach (var mouse in _inputContext.Mice)
         {
             mouse.MouseMove += OnMouseMove;
-            mouse.Cursor.CursorMode = CursorMode.Disabled;
         }
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
@@ -88,6 +99,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  WASD - Move camera");
         Console.WriteLine("  Space/Shift - Move up/down");
         Console.WriteLine("  Mouse - Look around");
+        Console.WriteLine("  F1/F2/F3 - Toggle UI panels");
         Console.WriteLine("  ESC - Exit");
         Console.WriteLine("=====================================\n");
     }
@@ -96,29 +108,48 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null) return;
+        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null) return;
 
-        // Process keyboard input
-        if (_keysPressed.Contains(Key.W))
-            _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
-        if (_keysPressed.Contains(Key.S))
-            _camera.ProcessKeyboard(CameraMovement.Backward, _deltaTime);
-        if (_keysPressed.Contains(Key.A))
-            _camera.ProcessKeyboard(CameraMovement.Left, _deltaTime);
-        if (_keysPressed.Contains(Key.D))
-            _camera.ProcessKeyboard(CameraMovement.Right, _deltaTime);
-        if (_keysPressed.Contains(Key.Space))
-            _camera.ProcessKeyboard(CameraMovement.Up, _deltaTime);
-        if (_keysPressed.Contains(Key.ShiftLeft))
-            _camera.ProcessKeyboard(CameraMovement.Down, _deltaTime);
+        // Update ImGui
+        _imguiController.Update(_deltaTime);
+        
+        // Check if ImGui wants mouse input
+        var io = ImGuiNET.ImGui.GetIO();
+        _uiWantsMouse = io.WantCaptureMouse;
 
-        // Update game engine
-        _gameEngine.Update();
+        // Process keyboard input for camera (only if UI doesn't want it and menu is not open)
+        bool anyUIOpen = _menuSystem.IsMenuOpen || _inventoryUI.IsOpen;
+        if (!io.WantCaptureKeyboard && !anyUIOpen)
+        {
+            if (_keysPressed.Contains(Key.W))
+                _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
+            if (_keysPressed.Contains(Key.S))
+                _camera.ProcessKeyboard(CameraMovement.Backward, _deltaTime);
+            if (_keysPressed.Contains(Key.A))
+                _camera.ProcessKeyboard(CameraMovement.Left, _deltaTime);
+            if (_keysPressed.Contains(Key.D))
+                _camera.ProcessKeyboard(CameraMovement.Right, _deltaTime);
+            if (_keysPressed.Contains(Key.Space))
+                _camera.ProcessKeyboard(CameraMovement.Up, _deltaTime);
+            if (_keysPressed.Contains(Key.ShiftLeft))
+                _camera.ProcessKeyboard(CameraMovement.Down, _deltaTime);
+        }
+        
+        // Handle UI and menu input
+        _hudSystem.HandleInput();
+        _menuSystem.HandleInput();
+        _inventoryUI.HandleInput();
+
+        // Update game engine (pause if menu is open)
+        if (!anyUIOpen)
+        {
+            _gameEngine.Update();
+        }
     }
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null) return;
+        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -145,6 +176,23 @@ public class GraphicsWindow : IDisposable
                 _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
             }
         }
+        
+        // Render ImGui UI on top
+        if (_menuSystem.IsMenuOpen)
+        {
+            // Only render menu when menu is open
+            _menuSystem.Render();
+        }
+        else
+        {
+            // Render HUD when menu is closed
+            _hudSystem.Render();
+            
+            // Render inventory if open
+            _inventoryUI.Render();
+        }
+        
+        _imguiController.Render();
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)
@@ -165,6 +213,9 @@ public class GraphicsWindow : IDisposable
     private void OnMouseMove(IMouse mouse, Vector2 position)
     {
         if (_camera == null) return;
+        
+        // Don't process mouse movement if UI wants the mouse
+        if (_uiWantsMouse) return;
 
         if (_firstMouse)
         {
@@ -190,6 +241,7 @@ public class GraphicsWindow : IDisposable
     {
         if (!_disposed)
         {
+            _imguiController?.Dispose();
             _voxelRenderer?.Dispose();
             _inputContext?.Dispose();
             _gl?.Dispose();
