@@ -8,6 +8,12 @@ using AvorionLike.Core.RPG;
 using AvorionLike.Core.Configuration;
 using AvorionLike.Core.Logging;
 using AvorionLike.Core.Events;
+using AvorionLike.Core.Combat;
+using AvorionLike.Core.Mining;
+using AvorionLike.Core.Fleet;
+using AvorionLike.Core.Navigation;
+using AvorionLike.Core.Voxel;
+using AvorionLike.Core.Economy;
 
 namespace AvorionLike.Core;
 
@@ -26,6 +32,14 @@ public class GameEngine
     public CraftingSystem CraftingSystem { get; private set; } = null!;
     public LootSystem LootSystem { get; private set; } = null!;
     public TradingSystem TradingSystem { get; private set; } = null!;
+    
+    // New systems
+    public CombatSystem CombatSystem { get; private set; } = null!;
+    public MiningSystem MiningSystem { get; private set; } = null!;
+    public FleetManagementSystem FleetManagementSystem { get; private set; } = null!;
+    public NavigationSystem NavigationSystem { get; private set; } = null!;
+    public BuildSystem BuildSystem { get; private set; } = null!;
+    public EconomySystem EconomySystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -78,10 +92,22 @@ public class GameEngine
         CraftingSystem = new CraftingSystem();
         LootSystem = new LootSystem();
         TradingSystem = new TradingSystem();
+        CombatSystem = new CombatSystem(EntityManager);
+        MiningSystem = new MiningSystem(EntityManager);
+        FleetManagementSystem = new FleetManagementSystem(EntityManager);
+        NavigationSystem = new NavigationSystem(EntityManager);
+        BuildSystem = new BuildSystem(EntityManager);
+        EconomySystem = new EconomySystem(EntityManager);
         Logger.Instance.Info("GameEngine", "All systems initialized");
 
         // Register systems with entity manager
         EntityManager.RegisterSystem(PhysicsSystem);
+        EntityManager.RegisterSystem(CombatSystem);
+        EntityManager.RegisterSystem(MiningSystem);
+        EntityManager.RegisterSystem(FleetManagementSystem);
+        EntityManager.RegisterSystem(NavigationSystem);
+        EntityManager.RegisterSystem(BuildSystem);
+        EntityManager.RegisterSystem(EconomySystem);
 
         // Register engine API for scripting
         ScriptingEngine.RegisterObject("Engine", this);
