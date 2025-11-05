@@ -12,6 +12,18 @@ public class VoxelStructureComponent : IComponent
     public List<VoxelBlock> Blocks { get; set; } = new();
     public Vector3 CenterOfMass { get; private set; }
     public float TotalMass { get; private set; }
+    public float MomentOfInertia { get; private set; }
+    
+    // Thrust capabilities
+    public float TotalThrust { get; private set; }
+    public float TotalTorque { get; private set; }
+    
+    // Power and shields
+    public float PowerGeneration { get; private set; }
+    public float ShieldCapacity { get; private set; }
+    
+    // Structure integrity
+    public float StructuralIntegrity { get; private set; } = 100f;
 
     /// <summary>
     /// Add a voxel block to the structure
@@ -36,7 +48,44 @@ public class VoxelStructureComponent : IComponent
     }
 
     /// <summary>
-    /// Recalculate center of mass and total mass
+    /// Damage a specific block at a position
+    /// </summary>
+    public List<VoxelBlock> DamageAtPosition(Vector3 position, float radius, float damage)
+    {
+        var destroyedBlocks = new List<VoxelBlock>();
+        
+        foreach (var block in Blocks)
+        {
+            float distance = Vector3.Distance(block.Position, position);
+            if (distance <= radius)
+            {
+                // Apply damage with falloff
+                float actualDamage = damage * (1f - distance / radius);
+                block.TakeDamage(actualDamage);
+                
+                if (block.IsDestroyed)
+                {
+                    destroyedBlocks.Add(block);
+                }
+            }
+        }
+        
+        // Remove destroyed blocks
+        foreach (var block in destroyedBlocks)
+        {
+            Blocks.Remove(block);
+        }
+        
+        if (destroyedBlocks.Count > 0)
+        {
+            RecalculateProperties();
+        }
+        
+        return destroyedBlocks;
+    }
+
+    /// <summary>
+    /// Recalculate center of mass and all ship properties
     /// </summary>
     private void RecalculateProperties()
     {
@@ -44,12 +93,25 @@ public class VoxelStructureComponent : IComponent
         {
             CenterOfMass = Vector3.Zero;
             TotalMass = 0f;
+            MomentOfInertia = 0f;
+            TotalThrust = 0f;
+            TotalTorque = 0f;
+            PowerGeneration = 0f;
+            ShieldCapacity = 0f;
+            StructuralIntegrity = 0f;
             return;
         }
 
         float totalMass = 0f;
         Vector3 weightedPosition = Vector3.Zero;
+        float totalThrust = 0f;
+        float totalTorque = 0f;
+        float powerGen = 0f;
+        float shieldCap = 0f;
+        float totalDurability = 0f;
+        float maxDurability = 0f;
 
+        // First pass: calculate center of mass
         foreach (var block in Blocks)
         {
             totalMass += block.Mass;
@@ -58,6 +120,43 @@ public class VoxelStructureComponent : IComponent
 
         TotalMass = totalMass;
         CenterOfMass = weightedPosition / totalMass;
+
+        // Second pass: calculate moment of inertia and other properties
+        float momentOfInertia = 0f;
+        foreach (var block in Blocks)
+        {
+            // Moment of inertia relative to center of mass
+            Vector3 r = block.Position - CenterOfMass;
+            momentOfInertia += block.Mass * r.LengthSquared();
+            
+            // Accumulate functional properties
+            if (block.BlockType == BlockType.Engine || block.BlockType == BlockType.Thruster)
+            {
+                totalThrust += block.ThrustPower;
+            }
+            else if (block.BlockType == BlockType.GyroArray)
+            {
+                totalTorque += block.ThrustPower; // Torque for gyros
+            }
+            else if (block.BlockType == BlockType.Generator)
+            {
+                powerGen += block.PowerGeneration;
+            }
+            else if (block.BlockType == BlockType.ShieldGenerator)
+            {
+                shieldCap += block.ShieldCapacity;
+            }
+            
+            totalDurability += block.Durability;
+            maxDurability += block.MaxDurability;
+        }
+
+        MomentOfInertia = momentOfInertia;
+        TotalThrust = totalThrust;
+        TotalTorque = totalTorque;
+        PowerGeneration = powerGen;
+        ShieldCapacity = shieldCap;
+        StructuralIntegrity = maxDurability > 0 ? (totalDurability / maxDurability) * 100f : 0f;
     }
 
     /// <summary>
@@ -66,5 +165,13 @@ public class VoxelStructureComponent : IComponent
     public IEnumerable<VoxelBlock> GetBlocksAt(Vector3 position, float tolerance = 0.1f)
     {
         return Blocks.Where(b => Vector3.Distance(b.Position, position) < tolerance);
+    }
+    
+    /// <summary>
+    /// Get blocks of a specific type
+    /// </summary>
+    public IEnumerable<VoxelBlock> GetBlocksByType(BlockType type)
+    {
+        return Blocks.Where(b => b.BlockType == type);
     }
 }

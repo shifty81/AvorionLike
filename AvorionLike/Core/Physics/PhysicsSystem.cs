@@ -26,7 +26,9 @@ public class PhysicsSystem : SystemBase
 
             // Calculate acceleration from forces (F = ma, a = F/m)
             physics.Acceleration = physics.AppliedForce / physics.Mass;
-            physics.AngularAcceleration = physics.AppliedTorque / physics.Mass;
+            
+            // Calculate angular acceleration from torque (τ = Iα, α = τ/I)
+            physics.AngularAcceleration = physics.AppliedTorque / physics.MomentOfInertia;
 
             // Update velocities
             physics.Velocity += physics.Acceleration * deltaTime;
