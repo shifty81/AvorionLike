@@ -2,6 +2,8 @@
 
 A custom game engine implementation inspired by Avorion, built as a standalone Windows application using C# and .NET 9.0.
 
+> **❓ Is this game playable yet?** See our [Playability Status Assessment](PLAYABILITY_STATUS.md) for a detailed answer.
+
 > **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 
 ## Overview
@@ -480,6 +482,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ## Documentation
 
 ### 📋 Quick Reference
+- **[Playability Status](PLAYABILITY_STATUS.md)** - 📌 **IS IT PLAYABLE?** - Honest assessment of current state and what's needed
 - **[Project Summary](PROJECT_SUMMARY.md)** - 📌 **START HERE** - Quick overview of current state and next steps
 - **[Next Steps & Recommendations](NEXT_STEPS.md)** - 📌 **COMPREHENSIVE GUIDE** - Detailed analysis and prioritized recommendations (980+ lines)
 - **[Architecture Diagram](ARCHITECTURE_DIAGRAM.md)** - Visual system architecture and component relationships
