@@ -23,6 +23,7 @@ public class GraphicsWindow : IDisposable
     private ImGuiController? _imguiController;
     private HUDSystem? _hudSystem;
     private MenuSystem? _menuSystem;
+    private InventoryUI? _inventoryUI;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -75,6 +76,7 @@ public class GraphicsWindow : IDisposable
         _imguiController = new ImGuiController(_gl, _window, _inputContext);
         _hudSystem = new HUDSystem(_gameEngine);
         _menuSystem = new MenuSystem(_gameEngine);
+        _inventoryUI = new InventoryUI(_gameEngine);
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
@@ -106,7 +108,7 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null) return;
+        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
@@ -116,7 +118,8 @@ public class GraphicsWindow : IDisposable
         _uiWantsMouse = io.WantCaptureMouse;
 
         // Process keyboard input for camera (only if UI doesn't want it and menu is not open)
-        if (!io.WantCaptureKeyboard && !_menuSystem.IsMenuOpen)
+        bool anyUIOpen = _menuSystem.IsMenuOpen || _inventoryUI.IsOpen;
+        if (!io.WantCaptureKeyboard && !anyUIOpen)
         {
             if (_keysPressed.Contains(Key.W))
                 _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
@@ -135,9 +138,10 @@ public class GraphicsWindow : IDisposable
         // Handle UI and menu input
         _hudSystem.HandleInput();
         _menuSystem.HandleInput();
+        _inventoryUI.HandleInput();
 
         // Update game engine (pause if menu is open)
-        if (!_menuSystem.IsMenuOpen)
+        if (!anyUIOpen)
         {
             _gameEngine.Update();
         }
@@ -145,7 +149,7 @@ public class GraphicsWindow : IDisposable
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null) return;
+        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -183,6 +187,9 @@ public class GraphicsWindow : IDisposable
         {
             // Render HUD when menu is closed
             _hudSystem.Render();
+            
+            // Render inventory if open
+            _inventoryUI.Render();
         }
         
         _imguiController.Render();
