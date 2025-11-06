@@ -1556,6 +1556,8 @@ class Program
         Console.WriteLine("  • Faction and politics system");
         Console.WriteLine("  • Player pod progression system");
         Console.WriteLine();
+        Console.WriteLine(VersionInfo.GetSystemRequirements());
+        Console.WriteLine();
         Console.WriteLine("GitHub: https://github.com/shifty81/AvorionLike");
         Console.WriteLine();
         Console.WriteLine("Press Enter to return to main menu...");

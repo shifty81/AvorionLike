@@ -36,6 +36,16 @@ public static class VersionInfo
     public const string License = "MIT License";
     
     /// <summary>
+    /// Minimum .NET version required
+    /// </summary>
+    public const string MinDotNetVersion = ".NET 9.0";
+    
+    /// <summary>
+    /// Target framework
+    /// </summary>
+    public const string TargetFramework = "net9.0";
+    
+    /// <summary>
     /// Get a formatted version info string for display
     /// </summary>
     public static string GetVersionInfo()
@@ -44,5 +54,18 @@ public static class VersionInfo
                $"Released: {ReleaseDate}\n" +
                $"{Copyright}\n" +
                $"{License}";
+    }
+    
+    /// <summary>
+    /// Get system requirements information
+    /// </summary>
+    public static string GetSystemRequirements()
+    {
+        return $"System Requirements:\n" +
+               $"  • {MinDotNetVersion} SDK or later\n" +
+               $"  • OpenGL 3.3+ compatible graphics card\n" +
+               $"  • 4 GB RAM minimum (8 GB recommended)\n" +
+               $"  • 500 MB available disk space\n" +
+               $"  • Windows 10/11, Linux, or macOS";
     }
 }
