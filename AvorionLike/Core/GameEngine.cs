@@ -38,11 +38,13 @@ public class GameEngine
     
     // New systems
     public CombatSystem CombatSystem { get; private set; } = null!;
+    public DamageSystem DamageSystem { get; private set; } = null!;
     public MiningSystem MiningSystem { get; private set; } = null!;
     public FleetManagementSystem FleetManagementSystem { get; private set; } = null!;
     public NavigationSystem NavigationSystem { get; private set; } = null!;
     public BuildSystem BuildSystem { get; private set; } = null!;
     public EconomySystem EconomySystem { get; private set; } = null!;
+    public CollisionSystem CollisionSystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -90,6 +92,7 @@ public class GameEngine
 
         // Initialize systems
         PhysicsSystem = new PhysicsSystem(EntityManager);
+        CollisionSystem = new CollisionSystem(EntityManager);
         ScriptingEngine = new ScriptingEngine();
         GalaxyGenerator = new GalaxyGenerator(_galaxySeed);
         CraftingSystem = new CraftingSystem();
@@ -98,6 +101,7 @@ public class GameEngine
         PodDockingSystem = new PodDockingSystem(EntityManager);
         PodAbilitySystem = new PodAbilitySystem(EntityManager);
         CombatSystem = new CombatSystem(EntityManager);
+        DamageSystem = new DamageSystem(EntityManager);
         MiningSystem = new MiningSystem(EntityManager);
         FleetManagementSystem = new FleetManagementSystem(EntityManager);
         NavigationSystem = new NavigationSystem(EntityManager);
@@ -107,7 +111,9 @@ public class GameEngine
 
         // Register systems with entity manager
         EntityManager.RegisterSystem(PhysicsSystem);
+        EntityManager.RegisterSystem(CollisionSystem);
         EntityManager.RegisterSystem(CombatSystem);
+        EntityManager.RegisterSystem(DamageSystem);
         EntityManager.RegisterSystem(MiningSystem);
         EntityManager.RegisterSystem(FleetManagementSystem);
         EntityManager.RegisterSystem(NavigationSystem);
