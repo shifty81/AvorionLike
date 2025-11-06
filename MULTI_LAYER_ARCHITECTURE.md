@@ -1,11 +1,26 @@
 # Multi-Layer Gameplay Architecture
 ## Combining Avorion + Elite Dangerous + X4 Foundations + Stellaris + EVE Online
 
-This document outlines the architectural plan to transform Codename:Subspace into a comprehensive multi-layer space game that seamlessly integrates mechanics from five legendary space games.
+This document outlines the architectural plan to transform Codename:Subspace into a comprehensive multi-layer space game that integrates mechanics from five legendary space games.
 
 ## Executive Summary
 
-**Vision**: Create a seamless, multi-layered space game where players can transition from first-person piloting to commanding a galaxy-spanning empire without loading screens.
+**Vision**: Create a multi-layered space game where players can transition from first-person piloting to commanding a galaxy-spanning empire. The game uses **sector-based instances with load screens** between sectors for optimal performance and gameplay.
+
+**Important Note**: This is **NOT an open world game**. The galaxy is divided into **solar systems**, where:
+- **Each solar system is a separate map/scene/instance**
+- All planets, stations, asteroids, and ships in that system are loaded when you enter
+- **Load screens occur when jumping between solar systems** (hyperspace/warp jumps)
+- **Within a solar system**: Seamless transitions between cockpit → ship → fleet views (no loading)
+- This approach matches Avorion and X4's design philosophy
+
+**Benefits of This Design**:
+- Better performance optimization per system
+- Enables detailed simulation within each system
+- Manageable server load (one system per server instance)
+- Allows for large, detailed solar systems
+- Clear boundaries for multiplayer instances
+- Predictable memory usage
 
 **Current Status**: 
 - ✅ Avorion-style voxel building system (IMPLEMENTED)
@@ -17,34 +32,50 @@ This document outlines the architectural plan to transform Codename:Subspace int
 
 ## Four Layers of Gameplay
 
+**System-Based Design**: 
+- **Between Solar Systems**: Load screens when jumping/warping (hyperspace travel)
+- **Within a Solar System**: Seamless transitions between cockpit, ship, and fleet views
+- Each system contains: Star(s), planets, moons, asteroid belts, stations, AI ships
+- Galaxy map shows all systems; clicking one initiates jump with loading screen
+
 ### Layer 1: Local/Tactical - Elite Dangerous Infusion
-**Focus**: Ship movement, combat, mining, building, immersive piloting
+**Focus**: Ship movement, combat, mining, building, immersive piloting **within a solar system**
 
 **Key Features to Implement**:
 ```
+Core/SolarSystem/
+├── SolarSystemManager.cs        # Manages current loaded solar system
+├── SystemScene.cs               # Represents a complete solar system instance
+├── HyperspaceJump.cs            # Handles jumps between systems with loading
+├── HyperspaceAnimation.cs       # Animated hyperspace tunnel during load ✨ NEW
+├── LoadingTipManager.cs         # Manages gameplay tips during loading ✨ NEW
+├── SystemLoader.cs              # Loads/unloads system data and entities
+└── SystemBoundary.cs            # Defines system edges and jump points
+
 Core/Flight/
-├── FlightModel.cs              # Physics-based flight mechanics
+├── FlightModel.cs               # Physics-based flight mechanics
 ├── CockpitSystem.cs             # First-person cockpit experience
 ├── FlightAssist.cs              # Optional flight assistance
 ├── ManeuveringThrusters.cs      # 6-DOF movement control
 └── InertialDampeners.cs         # Momentum and drift simulation
 
 Core/Scale/
-├── GalaxyScaleManager.cs        # 1:1 scale Milky Way
-├── ProceduralStarSystem.cs      # Realistic star system generation
-├── OrbitalMechanics.cs          # Realistic orbital physics
-└── DistanceCalculations.cs      # Lightyear-scale positioning
+├── GalaxyMap.cs                 # Overview of all solar systems
+├── SystemGeneration.cs          # Procedural solar system generation
+├── OrbitalMechanics.cs          # Realistic orbital physics within system
+└── SystemCoordinates.cs         # Local coordinate system per solar system
 ```
 
 **Implementation Priority**: HIGH
 - Elite Dangerous flight model provides the "feel" and immersion
-- Realistic scale gives sense of discovery
-- Seamless first-person to third-person transitions
+- Solar system instances keep scope manageable
+- Seamless first-person to third-person transitions within system
 
 **Technical Challenges**:
-- Floating point precision at galactic scale (use 64-bit coordinates + local origin)
-- Performance with detailed cockpit rendering
-- Input handling for complex flight controls
+- Loading/unloading systems efficiently
+- Saving system state when player leaves
+- Handling AI ships across system boundaries
+- Smooth hyperspace jump transitions with loading screen
 
 ### Layer 2: System/Operational - X4 Foundations Integration
 **Focus**: Trade routes, station management, local fleet commands, living economy
