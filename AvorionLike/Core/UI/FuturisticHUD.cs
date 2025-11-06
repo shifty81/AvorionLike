@@ -394,7 +394,7 @@ public class FuturisticHUD
             if (targetEntity != null)
             {
                 ImGui.PushStyleColor(ImGuiCol.Text, _lineColor);
-                ImGui.Text($"ID: {_selectedTargetId.ToString().Substring(0, 8)}...");
+                ImGui.Text($"ID: {_selectedTargetId.ToString("N")[..8]}");
                 ImGui.PopStyleColor();
                 
                 var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_selectedTargetId);
