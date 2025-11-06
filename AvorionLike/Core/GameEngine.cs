@@ -34,6 +34,7 @@ public class GameEngine
     public LootSystem LootSystem { get; private set; } = null!;
     public TradingSystem TradingSystem { get; private set; } = null!;
     public PodDockingSystem PodDockingSystem { get; private set; } = null!;
+    public PodAbilitySystem PodAbilitySystem { get; private set; } = null!;
     
     // New systems
     public CombatSystem CombatSystem { get; private set; } = null!;
@@ -95,6 +96,7 @@ public class GameEngine
         LootSystem = new LootSystem();
         TradingSystem = new TradingSystem();
         PodDockingSystem = new PodDockingSystem(EntityManager);
+        PodAbilitySystem = new PodAbilitySystem(EntityManager);
         CombatSystem = new CombatSystem(EntityManager);
         MiningSystem = new MiningSystem(EntityManager);
         FleetManagementSystem = new FleetManagementSystem(EntityManager);

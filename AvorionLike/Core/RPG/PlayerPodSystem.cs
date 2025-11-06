@@ -66,9 +66,9 @@ public class PlayerPodComponent : IComponent, ISerializable
     public Guid? DockedShipId { get; set; } = null;
     
     /// <summary>
-    /// Calculate the total efficiency multiplier including upgrades
+    /// Calculate total efficiency multiplier including upgrades and skills
     /// </summary>
-    public float GetTotalEfficiencyMultiplier()
+    public float GetTotalEfficiencyMultiplier(PodSkillTreeComponent? skillTree = null)
     {
         float total = BaseEfficiencyMultiplier;
         foreach (var upgrade in EquippedUpgrades)
@@ -78,13 +78,21 @@ public class PlayerPodComponent : IComponent, ISerializable
                 total += upgrade.EffectValue;
             }
         }
+        
+        // Apply skill bonuses
+        if (skillTree != null)
+        {
+            float efficiencySkillBonus = skillTree.GetSkillBonus("engineering_efficiency");
+            total += efficiencySkillBonus;
+        }
+        
         return Math.Min(total, 1.0f); // Cap at 1.0 (100% efficiency)
     }
     
     /// <summary>
-    /// Calculate total thrust power including upgrades
+    /// Calculate total thrust power including upgrades and skills
     /// </summary>
-    public float GetTotalThrust()
+    public float GetTotalThrust(PodSkillTreeComponent? skillTree = null, PodAbilitiesComponent? abilities = null)
     {
         float total = BaseThrustPower;
         foreach (var upgrade in EquippedUpgrades)
@@ -94,13 +102,37 @@ public class PlayerPodComponent : IComponent, ISerializable
                 total += upgrade.EffectValue;
             }
         }
-        return total * GetTotalEfficiencyMultiplier();
+        
+        float result = total * GetTotalEfficiencyMultiplier();
+        
+        // Apply skill bonuses
+        if (skillTree != null)
+        {
+            float thrustSkillBonus = skillTree.GetSkillBonus("engineering_thrust");
+            result *= (1.0f + thrustSkillBonus);
+        }
+        
+        // Apply active ability bonuses
+        if (abilities != null)
+        {
+            float abilityBonus = 0f;
+            foreach (var ability in abilities.GetEquippedAbilities())
+            {
+                if (ability.Type == AbilityType.Mobility && ability.IsCurrentlyActive())
+                {
+                    abilityBonus += ability.EffectValue;
+                }
+            }
+            result *= (1.0f + abilityBonus);
+        }
+        
+        return result;
     }
     
     /// <summary>
-    /// Calculate total power generation including upgrades
+    /// Calculate total power generation including upgrades and skills
     /// </summary>
-    public float GetTotalPowerGeneration()
+    public float GetTotalPowerGeneration(PodSkillTreeComponent? skillTree = null)
     {
         float total = BasePowerGeneration;
         foreach (var upgrade in EquippedUpgrades)
@@ -110,13 +142,23 @@ public class PlayerPodComponent : IComponent, ISerializable
                 total += upgrade.EffectValue;
             }
         }
-        return total * GetTotalEfficiencyMultiplier();
+        
+        float result = total * GetTotalEfficiencyMultiplier();
+        
+        // Apply skill bonuses
+        if (skillTree != null)
+        {
+            float powerSkillBonus = skillTree.GetSkillBonus("engineering_power");
+            result *= (1.0f + powerSkillBonus);
+        }
+        
+        return result;
     }
     
     /// <summary>
-    /// Calculate total shield capacity including upgrades
+    /// Calculate total shield capacity including upgrades and skills
     /// </summary>
-    public float GetTotalShieldCapacity()
+    public float GetTotalShieldCapacity(PodSkillTreeComponent? skillTree = null, PodAbilitiesComponent? abilities = null)
     {
         float total = BaseShieldCapacity;
         foreach (var upgrade in EquippedUpgrades)
@@ -126,7 +168,31 @@ public class PlayerPodComponent : IComponent, ISerializable
                 total += upgrade.EffectValue;
             }
         }
-        return total * GetTotalEfficiencyMultiplier();
+        
+        float result = total * GetTotalEfficiencyMultiplier();
+        
+        // Apply skill bonuses
+        if (skillTree != null)
+        {
+            float shieldSkillBonus = skillTree.GetSkillBonus("defense_shield_capacity");
+            result *= (1.0f + shieldSkillBonus);
+        }
+        
+        // Apply active ability bonuses
+        if (abilities != null)
+        {
+            float abilityBonus = 0f;
+            foreach (var ability in abilities.GetEquippedAbilities())
+            {
+                if (ability.Type == AbilityType.Shield && ability.IsCurrentlyActive())
+                {
+                    abilityBonus += ability.EffectValue;
+                }
+            }
+            result *= (1.0f + abilityBonus);
+        }
+        
+        return result;
     }
     
     /// <summary>
@@ -138,9 +204,9 @@ public class PlayerPodComponent : IComponent, ISerializable
     }
     
     /// <summary>
-    /// Get experience multiplier from upgrades
+    /// Get experience multiplier from upgrades and skills
     /// </summary>
-    public float GetExperienceMultiplier()
+    public float GetExperienceMultiplier(PodSkillTreeComponent? skillTree = null)
     {
         float multiplier = 1.0f;
         foreach (var upgrade in EquippedUpgrades)
@@ -150,6 +216,14 @@ public class PlayerPodComponent : IComponent, ISerializable
                 multiplier += upgrade.EffectValue;
             }
         }
+        
+        // Apply skill bonuses
+        if (skillTree != null)
+        {
+            float xpSkillBonus = skillTree.GetSkillBonus("leadership_experience");
+            multiplier += xpSkillBonus;
+        }
+        
         return multiplier;
     }
     
@@ -467,6 +541,8 @@ public class PodDockingSystem
         if (dockingComponent != null && dockingComponent.HasDockedPod() && dockingComponent.DockedPodId.HasValue)
         {
             var podComponent = _entityManager.GetComponent<PlayerPodComponent>(dockingComponent.DockedPodId.Value);
+            var podSkillTree = _entityManager.GetComponent<PodSkillTreeComponent>(dockingComponent.DockedPodId.Value);
+            var podAbilities = _entityManager.GetComponent<PodAbilitiesComponent>(dockingComponent.DockedPodId.Value);
             
             if (podComponent != null)
             {
@@ -479,11 +555,24 @@ public class PodDockingSystem
                 stats.PowerGeneration *= levelBonus;
                 stats.ShieldCapacity *= levelBonus;
                 
-                // Add pod's inherent bonuses
-                stats.TotalThrust += podComponent.GetTotalThrust();
+                // Add pod's inherent bonuses (including skills and abilities)
+                stats.TotalThrust += podComponent.GetTotalThrust(podSkillTree, podAbilities);
                 stats.TotalTorque += podComponent.GetTotalTorque();
-                stats.PowerGeneration += podComponent.GetTotalPowerGeneration();
-                stats.ShieldCapacity += podComponent.GetTotalShieldCapacity();
+                stats.PowerGeneration += podComponent.GetTotalPowerGeneration(podSkillTree);
+                stats.ShieldCapacity += podComponent.GetTotalShieldCapacity(podSkillTree, podAbilities);
+                
+                // Apply combat skill bonuses if available
+                if (podSkillTree != null)
+                {
+                    float weaponDamageBonus = podSkillTree.GetSkillBonus("combat_weapon_damage");
+                    stats.WeaponDamageMultiplier = 1.0f + weaponDamageBonus;
+                    
+                    float critBonus = podSkillTree.GetSkillBonus("combat_critical_hit");
+                    stats.CriticalHitChance = critBonus;
+                    
+                    float fireRateBonus = podSkillTree.GetSkillBonus("combat_fire_rate");
+                    stats.FireRateMultiplier = 1.0f + fireRateBonus;
+                }
             }
         }
         
@@ -500,4 +589,9 @@ public class ShipStats
     public float TotalTorque { get; set; }
     public float PowerGeneration { get; set; }
     public float ShieldCapacity { get; set; }
+    
+    // Combat stats (from pod skills)
+    public float WeaponDamageMultiplier { get; set; } = 1.0f;
+    public float CriticalHitChance { get; set; } = 0f;
+    public float FireRateMultiplier { get; set; } = 1.0f;
 }
