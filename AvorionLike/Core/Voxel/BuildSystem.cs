@@ -415,8 +415,13 @@ public class BuildSystem : SystemBase
         
         var session = buildMode.CurrentSession;
         
+        if (!session.StretchStartPosition.HasValue)
+        {
+            return new PlacementResult { Message = "Invalid stretch start position" };
+        }
+        
         // Place the block at the start position with the stretched size
-        var result = PlaceBlock(shipId, session.StretchStartPosition!.Value, inventory);
+        var result = PlaceBlock(shipId, session.StretchStartPosition.Value, inventory);
         
         // End stretching mode
         session.IsStretching = false;

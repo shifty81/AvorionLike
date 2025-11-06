@@ -132,7 +132,8 @@ public class PowerSystem : SystemBase
             return;
         }
         
-        // Not enough power - disable systems by priority (lowest priority first)
+        // Not enough power - disable systems by priority (highest priority value = disabled last)
+        // Priority 1 = most important (disabled last), Priority 4 = least important (disabled first)
         var systemsByPriority = new List<(PowerSystemType system, int priority)>
         {
             (PowerSystemType.Weapons, power.WeaponsPriority),
@@ -140,7 +141,7 @@ public class PowerSystem : SystemBase
             (PowerSystemType.Engines, power.EnginesPriority),
             (PowerSystemType.Systems, power.SystemsPriority)
         }
-        .OrderByDescending(x => x.priority) // Higher number = lower priority = disabled first
+        .OrderByDescending(x => x.priority) // Higher priority number = disabled first
         .ToList();
         
         foreach (var (system, priority) in systemsByPriority)
@@ -203,13 +204,8 @@ public class PowerSystem : SystemBase
             combatComponent.CurrentShields = Math.Max(0, combatComponent.CurrentShields - 1f);
         }
         
-        // Reduce engine thrust if engines are disabled
-        var physicsComponent = _entityManager.GetComponent<PhysicsComponent>(entityId);
-        if (physicsComponent != null && !power.EnginesEnabled)
-        {
-            // Can't apply thrust without power
-            physicsComponent.MaxThrust *= 0.1f; // 10% emergency thrust
-        }
+        // Note: Engine thrust reduction is handled by the physics system
+        // which should check if engines are powered before applying thrust
     }
 }
 
