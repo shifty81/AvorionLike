@@ -33,28 +33,28 @@ public class EnhancedVoxelRenderer : IDisposable
 
     private void InitializeLights()
     {
-        // Main sun light
+        // Main sun light - Brighter for better visibility
         _lights.Add(new LightSource
         {
             Position = new Vector3(200, 300, 200),
-            Color = new Vector3(1.0f, 0.95f, 0.9f),
-            Intensity = 1.0f
+            Color = new Vector3(1.0f, 0.98f, 0.95f), // Slightly warm white
+            Intensity = 1.5f // Increased from 1.0
         });
 
-        // Ambient fill light
+        // Ambient fill light - Cooler blue tone
         _lights.Add(new LightSource
         {
             Position = new Vector3(-100, -50, 100),
-            Color = new Vector3(0.4f, 0.5f, 0.8f),
-            Intensity = 0.3f
+            Color = new Vector3(0.5f, 0.6f, 0.9f),  // More blue
+            Intensity = 0.4f // Increased from 0.3
         });
 
-        // Rim light
+        // Rim light - Accent lighting
         _lights.Add(new LightSource
         {
             Position = new Vector3(0, 50, -200),
-            Color = new Vector3(0.6f, 0.7f, 1.0f),
-            Intensity = 0.4f
+            Color = new Vector3(0.7f, 0.8f, 1.0f),  // Bright blue
+            Intensity = 0.5f  // Increased from 0.4
         });
     }
 
@@ -135,7 +135,7 @@ uniform vec3 viewPos;
 
 // Constants
 const float PI = 3.14159265359;
-const vec3 ambientLight = vec3(0.15, 0.15, 0.2); // Slight blue ambient for space
+const vec3 ambientLight = vec3(0.25, 0.25, 0.28); // Increased ambient light for better material visibility
 
 // Simplified PBR functions
 float DistributionGGX(vec3 N, vec3 H, float roughness)
