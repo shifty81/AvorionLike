@@ -132,8 +132,8 @@ public class PowerSystem : SystemBase
             return;
         }
         
-        // Not enough power - disable systems by priority (highest priority value = disabled last)
-        // Priority 1 = most important (disabled last), Priority 4 = least important (disabled first)
+        // Not enough power - disable systems by priority
+        // Priority 1 = most important (disabled LAST), Priority 4 = least important (disabled FIRST)
         var systemsByPriority = new List<(PowerSystemType system, int priority)>
         {
             (PowerSystemType.Weapons, power.WeaponsPriority),
@@ -141,7 +141,7 @@ public class PowerSystem : SystemBase
             (PowerSystemType.Engines, power.EnginesPriority),
             (PowerSystemType.Systems, power.SystemsPriority)
         }
-        .OrderByDescending(x => x.priority) // Higher priority number = disabled first
+        .OrderBy(x => -x.priority) // Invert: Lower numbers = higher importance, disabled last
         .ToList();
         
         foreach (var (system, priority) in systemsByPriority)
