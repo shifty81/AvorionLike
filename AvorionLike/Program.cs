@@ -58,9 +58,10 @@ class Program
             Console.WriteLine("7. Scripting Demo - Execute Lua Script");
             Console.WriteLine("8. Multiplayer - Start Server");
             Console.WriteLine("9. View Statistics");
-            Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships [NEW]");
-            Console.WriteLine("11. Persistence Demo - Save/Load Game [NEW]");
-            Console.WriteLine("12. Player Pod Demo - Character System [NEW]");
+            Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships");
+            Console.WriteLine("11. Persistence Demo - Save/Load Game");
+            Console.WriteLine("12. Player Pod Demo - Character System");
+            Console.WriteLine("13. Enhanced Pod Demo - Skills & Abilities [NEW]");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -103,6 +104,9 @@ class Program
                     break;
                 case "12":
                     PlayerPodDemo();
+                    break;
+                case "13":
+                    EnhancedPlayerPodDemo();
                     break;
                 case "0":
                     _running = false;
@@ -1010,6 +1014,286 @@ class Program
         Console.WriteLine("✓ Pod abilities considerably affect docked ship");
         Console.WriteLine("✓ Dock into any ship with a pod docking port");
         Console.WriteLine("✓ Displayed as single-block ship visually");
+
+        Console.WriteLine("\nPress Enter to return to main menu...");
+        Console.ReadLine();
+    }
+    
+    static void EnhancedPlayerPodDemo()
+    {
+        if (_gameEngine == null) return;
+
+        Console.WriteLine("\n=== Enhanced Player Pod System Demo ===");
+        Console.WriteLine("Showcasing Skills, Abilities, and Advanced Progression\n");
+
+        // Create the player pod entity
+        var pod = _gameEngine.EntityManager.CreateEntity("Player Pod");
+        Console.WriteLine($"✓ Created Player Pod (ID: {pod.Id.ToString("N")[..8]}...)");
+
+        // Add the player pod component
+        var podComponent = new PlayerPodComponent
+        {
+            EntityId = pod.Id,
+            BaseEfficiencyMultiplier = 0.5f,
+            BaseThrustPower = 50f,
+            BasePowerGeneration = 100f,
+            BaseShieldCapacity = 200f,
+            BaseTorque = 20f,
+            MaxUpgradeSlots = 5
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, podComponent);
+
+        // Add skill tree component
+        var skillTreeComponent = new PodSkillTreeComponent
+        {
+            EntityId = pod.Id
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, skillTreeComponent);
+
+        // Add abilities component
+        var abilitiesComponent = new PodAbilitiesComponent
+        {
+            EntityId = pod.Id
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, abilitiesComponent);
+
+        // Add voxel structure
+        var voxelComponent = new VoxelStructureComponent();
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 0),
+            new Vector3(2, 2, 2),
+            "Titanium",
+            BlockType.Hull
+        ));
+        _gameEngine.EntityManager.AddComponent(pod.Id, voxelComponent);
+
+        // Add physics
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = new Vector3(0, 0, 0),
+            Mass = voxelComponent.TotalMass,
+            MaxThrust = podComponent.GetTotalThrust(skillTreeComponent, abilitiesComponent),
+            MaxTorque = podComponent.GetTotalTorque(),
+            Velocity = Vector3.Zero
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, physicsComponent);
+
+        // Add progression
+        var progressionComponent = new ProgressionComponent
+        {
+            EntityId = pod.Id,
+            Level = 5,
+            Experience = 0,
+            SkillPoints = 10  // Start with some skill points
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, progressionComponent);
+
+        // Add inventory
+        var inventoryComponent = new InventoryComponent(500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 10000);
+        _gameEngine.EntityManager.AddComponent(pod.Id, inventoryComponent);
+
+        Console.WriteLine("\n--- Base Pod Stats ---");
+        Console.WriteLine($"  Level: {progressionComponent.Level}");
+        Console.WriteLine($"  Available Skill Points: {progressionComponent.SkillPoints}");
+        Console.WriteLine($"  Efficiency: {podComponent.GetTotalEfficiencyMultiplier(skillTreeComponent):F2}x");
+        Console.WriteLine($"  Thrust: {podComponent.GetTotalThrust(skillTreeComponent, abilitiesComponent):F2} N");
+        Console.WriteLine($"  Power: {podComponent.GetTotalPowerGeneration(skillTreeComponent):F2} W");
+        Console.WriteLine($"  Shields: {podComponent.GetTotalShieldCapacity(skillTreeComponent, abilitiesComponent):F2}");
+
+        // Demonstrate Skill Tree System
+        Console.WriteLine("\n=== SKILL TREE SYSTEM ===");
+        Console.WriteLine("Learning combat and engineering skills...\n");
+
+        // Learn combat skills
+        var skillPoints = progressionComponent.SkillPoints;
+        bool learned1 = skillTreeComponent.LearnSkill("combat_weapon_damage", progressionComponent.Level, ref skillPoints);
+        if (learned1)
+        {
+            Console.WriteLine("✓ Learned: Weapon Mastery (Rank 1/5)");
+            Console.WriteLine($"  Effect: +10% weapon damage");
+            progressionComponent.SkillPoints = skillPoints;
+        }
+
+        learned1 = skillTreeComponent.LearnSkill("combat_weapon_damage", progressionComponent.Level, ref skillPoints);
+        if (learned1)
+        {
+            Console.WriteLine("✓ Learned: Weapon Mastery (Rank 2/5)");
+            Console.WriteLine($"  Effect: +20% weapon damage");
+            progressionComponent.SkillPoints = skillPoints;
+        }
+
+        // Learn defense skill
+        bool learned2 = skillTreeComponent.LearnSkill("defense_shield_capacity", progressionComponent.Level, ref skillPoints);
+        if (learned2)
+        {
+            Console.WriteLine("✓ Learned: Shield Fortification (Rank 1/5)");
+            Console.WriteLine($"  Effect: +15% shield capacity");
+            progressionComponent.SkillPoints = skillPoints;
+        }
+
+        // Learn engineering skills
+        bool learned3 = skillTreeComponent.LearnSkill("engineering_thrust", progressionComponent.Level, ref skillPoints);
+        if (learned3)
+        {
+            Console.WriteLine("✓ Learned: Advanced Propulsion (Rank 1/5)");
+            Console.WriteLine($"  Effect: +12% thrust power");
+            progressionComponent.SkillPoints = skillPoints;
+        }
+
+        bool learned4 = skillTreeComponent.LearnSkill("engineering_power", progressionComponent.Level, ref skillPoints);
+        if (learned4)
+        {
+            Console.WriteLine("✓ Learned: Power Optimization (Rank 1/5)");
+            Console.WriteLine($"  Effect: +15% power generation");
+            progressionComponent.SkillPoints = skillPoints;
+        }
+
+        Console.WriteLine($"\n  Remaining Skill Points: {progressionComponent.SkillPoints}");
+        Console.WriteLine($"  Total Skills Learned: {skillTreeComponent.LearnedSkills.Count}");
+
+        Console.WriteLine("\n--- Pod Stats (With Skills) ---");
+        Console.WriteLine($"  Thrust: {podComponent.GetTotalThrust(skillTreeComponent, abilitiesComponent):F2} N");
+        Console.WriteLine($"  Power: {podComponent.GetTotalPowerGeneration(skillTreeComponent):F2} W");
+        Console.WriteLine($"  Shields: {podComponent.GetTotalShieldCapacity(skillTreeComponent, abilitiesComponent):F2}");
+
+        // Demonstrate Active Abilities System
+        Console.WriteLine("\n=== ACTIVE ABILITIES SYSTEM ===");
+        Console.WriteLine("Equipping pod abilities...\n");
+
+        // Equip abilities
+        bool equipped1 = abilitiesComponent.EquipAbility("shield_overcharge");
+        if (equipped1)
+        {
+            var ability = abilitiesComponent.Abilities["shield_overcharge"];
+            Console.WriteLine($"✓ Equipped: {ability.Name}");
+            Console.WriteLine($"  {ability.Description}");
+            Console.WriteLine($"  Energy Cost: {ability.EnergyCost}, Cooldown: {ability.Cooldown}s");
+        }
+
+        bool equipped2 = abilitiesComponent.EquipAbility("overload_weapons");
+        if (equipped2)
+        {
+            var ability = abilitiesComponent.Abilities["overload_weapons"];
+            Console.WriteLine($"✓ Equipped: {ability.Name}");
+            Console.WriteLine($"  {ability.Description}");
+            Console.WriteLine($"  Energy Cost: {ability.EnergyCost}, Cooldown: {ability.Cooldown}s");
+        }
+
+        bool equipped3 = abilitiesComponent.EquipAbility("afterburner");
+        if (equipped3)
+        {
+            var ability = abilitiesComponent.Abilities["afterburner"];
+            Console.WriteLine($"✓ Equipped: {ability.Name}");
+            Console.WriteLine($"  {ability.Description}");
+            Console.WriteLine($"  Energy Cost: {ability.EnergyCost}, Cooldown: {ability.Cooldown}s");
+        }
+
+        bool equipped4 = abilitiesComponent.EquipAbility("scan_pulse");
+        if (equipped4)
+        {
+            var ability = abilitiesComponent.Abilities["scan_pulse"];
+            Console.WriteLine($"✓ Equipped: {ability.Name}");
+            Console.WriteLine($"  {ability.Description}");
+            Console.WriteLine($"  Energy Cost: {ability.EnergyCost}, Cooldown: {ability.Cooldown}s");
+        }
+
+        Console.WriteLine($"\n  Equipped Abilities: {abilitiesComponent.EquippedAbilityIds.Count}/{abilitiesComponent.MaxEquippedAbilities}");
+
+        // Use abilities
+        Console.WriteLine("\n--- Using Abilities ---");
+        float availableEnergy = podComponent.GetTotalPowerGeneration(skillTreeComponent);
+        Console.WriteLine($"Available Energy: {availableEnergy:F2} W\n");
+
+        bool used1 = abilitiesComponent.UseAbility("afterburner", availableEnergy);
+        if (used1)
+        {
+            Console.WriteLine("✓ Activated: Afterburner");
+            Console.WriteLine($"  Thrust increased by 100% for 5 seconds!");
+            
+            var afterburner = abilitiesComponent.Abilities["afterburner"];
+            float boostedThrust = podComponent.GetTotalThrust(skillTreeComponent, abilitiesComponent);
+            Console.WriteLine($"  Current Thrust (with ability): {boostedThrust:F2} N");
+        }
+
+        bool used2 = abilitiesComponent.UseAbility("shield_overcharge", availableEnergy);
+        if (used2)
+        {
+            Console.WriteLine("✓ Activated: Shield Overcharge");
+            Console.WriteLine($"  Shield capacity increased by 50% for 10 seconds!");
+            
+            float boostedShields = podComponent.GetTotalShieldCapacity(skillTreeComponent, abilitiesComponent);
+            Console.WriteLine($"  Current Shields (with ability): {boostedShields:F2}");
+        }
+
+        // Create a ship with docking port
+        Console.WriteLine("\n=== DOCKING TO SHIP ===");
+        var ship = _gameEngine.EntityManager.CreateEntity("Advanced Fighter");
+        
+        var shipVoxel = new VoxelStructureComponent();
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 4, 4), "Titanium", BlockType.Hull));
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(-5, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(5, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(2, 2, 2), "Titanium", BlockType.PodDocking));
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(2, 2, 2), "Iron", BlockType.Generator));
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 4), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
+        
+        _gameEngine.EntityManager.AddComponent(ship.Id, shipVoxel);
+
+        var dockingComponent = new DockingComponent
+        {
+            EntityId = ship.Id,
+            HasDockingPort = true,
+            DockingPortPosition = new Vector3(0, 4, 0)
+        };
+        _gameEngine.EntityManager.AddComponent(ship.Id, dockingComponent);
+
+        Console.WriteLine($"✓ Created {ship.Name}");
+        Console.WriteLine($"  Ship Thrust: {shipVoxel.TotalThrust:F2} N");
+        Console.WriteLine($"  Ship Power: {shipVoxel.PowerGeneration:F2} W");
+        Console.WriteLine($"  Ship Shields: {shipVoxel.ShieldCapacity:F2}");
+
+        // Dock the pod
+        Console.WriteLine("\n--- Docking Pod ---");
+        bool docked = _gameEngine.PodDockingSystem.DockPod(pod.Id, ship.Id);
+        
+        if (docked)
+        {
+            Console.WriteLine("✓ Pod successfully docked!");
+            
+            var effectiveStats = _gameEngine.PodDockingSystem.GetEffectiveShipStats(ship.Id);
+            
+            Console.WriteLine("\n--- Ship Stats (With Skilled Pod) ---");
+            Console.WriteLine($"  Total Thrust: {effectiveStats.TotalThrust:F2} N");
+            Console.WriteLine($"  Total Torque: {effectiveStats.TotalTorque:F2} Nm");
+            Console.WriteLine($"  Power Generation: {effectiveStats.PowerGeneration:F2} W");
+            Console.WriteLine($"  Shield Capacity: {effectiveStats.ShieldCapacity:F2}");
+            Console.WriteLine($"  Weapon Damage: +{(effectiveStats.WeaponDamageMultiplier - 1.0f) * 100:F1}%");
+            Console.WriteLine($"  Critical Hit Chance: {effectiveStats.CriticalHitChance * 100:F1}%");
+            Console.WriteLine($"  Fire Rate: +{(effectiveStats.FireRateMultiplier - 1.0f) * 100:F1}%");
+            
+            float improvement = ((effectiveStats.TotalThrust / shipVoxel.TotalThrust) - 1.0f) * 100f;
+            Console.WriteLine($"\n  Overall Performance: +{improvement:F1}% from pod level, skills, and abilities!");
+        }
+
+        Console.WriteLine("\n=== NEW FEATURES SUMMARY ===");
+        Console.WriteLine("✓ Skill Tree System");
+        Console.WriteLine("  - 18+ skills across 5 categories");
+        Console.WriteLine("  - Combat, Defense, Engineering, Exploration, Leadership");
+        Console.WriteLine("  - Prerequisites and level requirements");
+        Console.WriteLine("  - Permanent character progression");
+        Console.WriteLine();
+        Console.WriteLine("✓ Active Abilities System");
+        Console.WriteLine("  - 8+ unique pod abilities");
+        Console.WriteLine("  - Shield, Weapon, Mobility, and Utility types");
+        Console.WriteLine("  - Cooldown and energy management");
+        Console.WriteLine("  - 4 equippable ability slots");
+        Console.WriteLine();
+        Console.WriteLine("✓ Enhanced Pod Stats");
+        Console.WriteLine("  - Skills boost all pod systems");
+        Console.WriteLine("  - Abilities provide temporary power-ups");
+        Console.WriteLine("  - Combined bonuses affect docked ships");
+        Console.WriteLine("  - Path to becoming unstoppable force!");
 
         Console.WriteLine("\nPress Enter to return to main menu...");
         Console.ReadLine();
