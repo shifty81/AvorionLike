@@ -146,6 +146,21 @@ public class FleetMission
                 MaxShips = 1; // Solo missions for covert ops
                 break;
                 
+            case MissionType.Trade:
+                Duration = 3.5f;
+                PreferredClass = null; // Any class can trade
+                MinimumCombatRating = 50;
+                MinimumCargoCapacity = 500;
+                break;
+                
+            case MissionType.Escort:
+                Duration = 4.0f;
+                PreferredClass = ShipClassType.Combat;
+                MinimumCombatRating = 200;
+                MinimumCargoCapacity = 0;
+                MinShips = 2; // Need escort ships
+                break;
+                
             default:
                 Duration = 2.0f;
                 MinimumCombatRating = 100;
@@ -289,7 +304,7 @@ public class FleetMission
             MissionType.Mine => "Mining Operation",
             MissionType.Salvage => "Salvage Operation",
             MissionType.Combat => "Combat Patrol",
-            MissionType.Trade => "Trade Route",
+            MissionType.Trade => "Trade Run",
             MissionType.Escort => "Escort Duty",
             MissionType.Reconnaissance => "Reconnaissance Mission",
             _ => "Unknown Mission"
@@ -354,6 +369,12 @@ public class FleetMission
                 break;
             case MissionType.Reconnaissance:
                 GenerateReconnaissanceRewards();
+                break;
+            case MissionType.Trade:
+                GenerateTradeRewards();
+                break;
+            case MissionType.Escort:
+                GenerateEscortRewards();
                 break;
         }
         
@@ -471,6 +492,41 @@ public class FleetMission
         if (Random.Shared.NextDouble() < 0.3)
         {
             RewardBlueprints.Add("Cloaking Device Prototype");
+        }
+    }
+    
+    /// <summary>
+    /// Generate trade rewards
+    /// </summary>
+    private void GenerateTradeRewards()
+    {
+        // Trade missions give high credits
+        CreditsReward = (int)(CreditsReward * 1.8f);
+        ExperienceReward = (int)(ExperienceReward * 1.2f);
+        
+        // Chance for trade-related blueprints
+        if (Random.Shared.NextDouble() < 0.3)
+        {
+            RewardBlueprints.Add("Trade Hub Upgrade");
+        }
+    }
+    
+    /// <summary>
+    /// Generate escort rewards
+    /// </summary>
+    private void GenerateEscortRewards()
+    {
+        // Escort missions give steady credits and combat XP
+        CreditsReward = (int)(CreditsReward * 1.3f);
+        ExperienceReward = (int)(ExperienceReward * 1.4f);
+        
+        // Chance for defensive subsystems
+        if (Random.Shared.NextDouble() < 0.5)
+        {
+            var rarity = RollSubsystemRarity();
+            var subsystem = ClassSpecificSubsystemGenerator.GenerateForClass(
+                ShipClassType.Combat, rarity);
+            RewardSubsystems.Add(subsystem);
         }
     }
     
