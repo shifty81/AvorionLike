@@ -22,7 +22,8 @@ public enum BlockType
     // Systems
     HyperdriveCore,   // For jumping between sectors
     Cargo,            // Storage
-    CrewQuarters      // For crew
+    CrewQuarters,     // For crew
+    PodDocking        // Docking port for player pod
 }
 
 /// <summary>

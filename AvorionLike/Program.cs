@@ -60,6 +60,7 @@ class Program
             Console.WriteLine("9. View Statistics");
             Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships [NEW]");
             Console.WriteLine("11. Persistence Demo - Save/Load Game [NEW]");
+            Console.WriteLine("12. Player Pod Demo - Character System [NEW]");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -99,6 +100,9 @@ class Program
                     break;
                 case "11":
                     PersistenceDemo();
+                    break;
+                case "12":
+                    PlayerPodDemo();
                     break;
                 case "0":
                     _running = false;
@@ -803,6 +807,212 @@ class Program
                 Console.WriteLine("Invalid option!");
                 break;
         }
+    }
+
+    static void PlayerPodDemo()
+    {
+        if (_gameEngine == null) return;
+
+        Console.WriteLine("\n=== Player Pod System Demo ===");
+        Console.WriteLine("The player pod is your character in the game - a multi-purpose utility ship");
+        Console.WriteLine("at half the efficiency of a built ship, but upgradeable and affecting any ship you pilot.\n");
+
+        // Create the player pod entity
+        var pod = _gameEngine.EntityManager.CreateEntity("Player Pod");
+        Console.WriteLine($"✓ Created Player Pod (ID: {pod.Id.ToString()[..8]}...)");
+
+        // Add the player pod component
+        var podComponent = new PlayerPodComponent
+        {
+            EntityId = pod.Id,
+            BaseEfficiencyMultiplier = 0.5f,
+            BaseThrustPower = 50f,
+            BasePowerGeneration = 100f,
+            BaseShieldCapacity = 200f,
+            BaseTorque = 20f,
+            MaxUpgradeSlots = 5
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, podComponent);
+
+        // Add a single-block voxel structure (pod looks like a 1-block ship)
+        var voxelComponent = new VoxelStructureComponent();
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 0),
+            new Vector3(2, 2, 2),
+            "Titanium",
+            BlockType.Hull
+        ));
+        _gameEngine.EntityManager.AddComponent(pod.Id, voxelComponent);
+
+        // Add physics
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = new Vector3(0, 0, 0),
+            Mass = voxelComponent.TotalMass,
+            MaxThrust = podComponent.GetTotalThrust(),
+            MaxTorque = podComponent.GetTotalTorque(),
+            Velocity = Vector3.Zero
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, physicsComponent);
+
+        // Add progression (pod levels up like a character)
+        var progressionComponent = new ProgressionComponent
+        {
+            EntityId = pod.Id,
+            Level = 1,
+            Experience = 0,
+            SkillPoints = 0
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, progressionComponent);
+
+        // Add inventory
+        var inventoryComponent = new InventoryComponent(500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 5000);
+        _gameEngine.EntityManager.AddComponent(pod.Id, inventoryComponent);
+
+        Console.WriteLine("\n--- Player Pod Stats (Base) ---");
+        Console.WriteLine($"  Efficiency Multiplier: {podComponent.GetTotalEfficiencyMultiplier():F2}x (50% of built ships)");
+        Console.WriteLine($"  Thrust Power: {podComponent.GetTotalThrust():F2} N");
+        Console.WriteLine($"  Power Generation: {podComponent.GetTotalPowerGeneration():F2} W");
+        Console.WriteLine($"  Shield Capacity: {podComponent.GetTotalShieldCapacity():F2}");
+        Console.WriteLine($"  Torque: {podComponent.GetTotalTorque():F2} Nm");
+        Console.WriteLine($"  Level: {progressionComponent.Level}");
+        Console.WriteLine($"  Upgrade Slots: {podComponent.EquippedUpgrades.Count}/{podComponent.MaxUpgradeSlots}");
+
+        // Demonstrate upgrade system
+        Console.WriteLine("\n--- Equipping Upgrades ---");
+        
+        var upgrade1 = new PodUpgrade(
+            "Advanced Thruster Module",
+            "Increases thrust power by 25N",
+            PodUpgradeType.ThrustBoost,
+            25f,
+            3
+        );
+        
+        var upgrade2 = new PodUpgrade(
+            "Efficiency Optimizer",
+            "Increases efficiency by 10%",
+            PodUpgradeType.EfficiencyBoost,
+            0.1f,
+            4
+        );
+        
+        var upgrade3 = new PodUpgrade(
+            "Shield Amplifier",
+            "Increases shield capacity by 100",
+            PodUpgradeType.ShieldBoost,
+            100f,
+            2
+        );
+
+        podComponent.EquipUpgrade(upgrade1);
+        Console.WriteLine($"✓ Equipped: {upgrade1.Name} (Rarity: {upgrade1.Rarity}/5)");
+        
+        podComponent.EquipUpgrade(upgrade2);
+        Console.WriteLine($"✓ Equipped: {upgrade2.Name} (Rarity: {upgrade2.Rarity}/5)");
+        
+        podComponent.EquipUpgrade(upgrade3);
+        Console.WriteLine($"✓ Equipped: {upgrade3.Name} (Rarity: {upgrade3.Rarity}/5)");
+
+        Console.WriteLine("\n--- Player Pod Stats (With Upgrades) ---");
+        Console.WriteLine($"  Efficiency Multiplier: {podComponent.GetTotalEfficiencyMultiplier():F2}x");
+        Console.WriteLine($"  Thrust Power: {podComponent.GetTotalThrust():F2} N");
+        Console.WriteLine($"  Power Generation: {podComponent.GetTotalPowerGeneration():F2} W");
+        Console.WriteLine($"  Shield Capacity: {podComponent.GetTotalShieldCapacity():F2}");
+        Console.WriteLine($"  Torque: {podComponent.GetTotalTorque():F2} Nm");
+        Console.WriteLine($"  Upgrade Slots: {podComponent.EquippedUpgrades.Count}/{podComponent.MaxUpgradeSlots}");
+
+        // Level up demonstration
+        Console.WriteLine("\n--- Level Up System ---");
+        Console.WriteLine("Gaining experience...");
+        progressionComponent.AddExperience(150);
+        Console.WriteLine($"✓ LEVEL UP! Now level {progressionComponent.Level}");
+        Console.WriteLine($"  Skill Points: {progressionComponent.SkillPoints}");
+
+        // Create a ship with docking port
+        Console.WriteLine("\n--- Creating Ship with Pod Docking Port ---");
+        var ship = _gameEngine.EntityManager.CreateEntity("Fighter Ship");
+        
+        var shipVoxel = new VoxelStructureComponent();
+        
+        // Core hull
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+        
+        // Engines
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+        
+        // Pod docking port
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 2, 2), "Titanium", BlockType.PodDocking));
+        
+        // Generator
+        shipVoxel.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 2, 2), "Iron", BlockType.Generator));
+        
+        _gameEngine.EntityManager.AddComponent(ship.Id, shipVoxel);
+
+        var shipPhysics = new PhysicsComponent
+        {
+            Position = new Vector3(50, 0, 0),
+            Mass = shipVoxel.TotalMass,
+            MaxThrust = shipVoxel.TotalThrust,
+            MaxTorque = shipVoxel.TotalTorque
+        };
+        _gameEngine.EntityManager.AddComponent(ship.Id, shipPhysics);
+
+        // Add docking component
+        var dockingComponent = new DockingComponent
+        {
+            EntityId = ship.Id,
+            HasDockingPort = true,
+            DockingPortPosition = new Vector3(0, 3, 0)
+        };
+        _gameEngine.EntityManager.AddComponent(ship.Id, dockingComponent);
+
+        Console.WriteLine($"✓ Created {ship.Name} with pod docking port");
+        Console.WriteLine($"  Ship Blocks: {shipVoxel.Blocks.Count}");
+        Console.WriteLine($"  Ship Mass: {shipVoxel.TotalMass:F2} kg");
+        Console.WriteLine($"  Ship Thrust: {shipVoxel.TotalThrust:F2} N");
+        Console.WriteLine($"  Ship Power: {shipVoxel.PowerGeneration:F2} W");
+        Console.WriteLine($"  Ship Shields: {shipVoxel.ShieldCapacity:F2}");
+
+        // Dock the pod to the ship
+        Console.WriteLine("\n--- Docking Pod to Ship ---");
+        bool docked = _gameEngine.PodDockingSystem.DockPod(pod.Id, ship.Id);
+        
+        if (docked)
+        {
+            Console.WriteLine("✓ Pod successfully docked to ship!");
+            Console.WriteLine("  Pod skills and abilities now affect the ship considerably.");
+            
+            // Get effective stats with pod bonuses
+            var effectiveStats = _gameEngine.PodDockingSystem.GetEffectiveShipStats(ship.Id);
+            
+            Console.WriteLine("\n--- Ship Stats (With Docked Pod) ---");
+            Console.WriteLine($"  Total Thrust: {effectiveStats.TotalThrust:F2} N");
+            Console.WriteLine($"  Total Torque: {effectiveStats.TotalTorque:F2} Nm");
+            Console.WriteLine($"  Power Generation: {effectiveStats.PowerGeneration:F2} W");
+            Console.WriteLine($"  Shield Capacity: {effectiveStats.ShieldCapacity:F2}");
+            Console.WriteLine($"  Level Bonus: +{progressionComponent.Level * 5}% to all stats");
+            
+            float improvement = ((effectiveStats.TotalThrust / shipVoxel.TotalThrust) - 1.0f) * 100f;
+            Console.WriteLine($"\n  Overall Improvement: +{improvement:F1}% from pod and level bonuses!");
+        }
+        else
+        {
+            Console.WriteLine("✗ Failed to dock pod");
+        }
+
+        Console.WriteLine("\n--- Pod System Features ---");
+        Console.WriteLine("✓ Pod functions as your playable character");
+        Console.WriteLine("✓ All ship systems at 50% efficiency (upgradeable)");
+        Console.WriteLine("✓ Levels up and gains experience like RPG character");
+        Console.WriteLine("✓ Equippable rare upgrades (5 slots)");
+        Console.WriteLine("✓ Pod abilities considerably affect docked ship");
+        Console.WriteLine("✓ Dock into any ship with a pod docking port");
+        Console.WriteLine("✓ Displayed as single-block ship visually");
+
+        Console.WriteLine("\nPress Enter to return to main menu...");
+        Console.ReadLine();
     }
 }
 
