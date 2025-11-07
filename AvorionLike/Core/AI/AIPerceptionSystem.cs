@@ -108,10 +108,19 @@ public class AIPerceptionSystem
                     : 0f;
             }
             
-            if (structure != null && structure.TotalMass > 0)
+            if (structure != null && structure.Blocks.Count > 0)
             {
-                // Approximate hull percentage based on mass
-                hullPercentage = structure.TotalMass / (structure.TotalMass + 1f);
+                // Calculate hull percentage based on block durability
+                float totalDurability = 0f;
+                float maxDurability = 0f;
+                
+                foreach (var block in structure.Blocks)
+                {
+                    totalDurability += block.Durability;
+                    maxDurability += block.MaxDurability;
+                }
+                
+                hullPercentage = maxDurability > 0 ? totalDurability / maxDurability : 1f;
             }
             
             perceived.Add(new PerceivedEntity
