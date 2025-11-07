@@ -247,8 +247,41 @@ public class GameMenuSystem
             Vector4 bgColor = (i == _selectedMenuItem) ? buttonHoverColor : buttonColor;
             _renderer.DrawRectFilled(new Vector2(buttonX, currentY), new Vector2(buttonWidth, buttonHeight), bgColor);
             
-            // Button border
-            _renderer.DrawRect(new Vector2(buttonX, currentY), new Vector2(buttonWidth, buttonHeight), buttonBorderColor, 2f);
+            // Button border (thicker for selected item)
+            float borderThickness = (i == _selectedMenuItem) ? 3f : 2f;
+            _renderer.DrawRect(new Vector2(buttonX, currentY), new Vector2(buttonWidth, buttonHeight), buttonBorderColor, borderThickness);
+            
+            // Selection indicator (arrow/marker on the left for selected item)
+            if (i == _selectedMenuItem)
+            {
+                float markerSize = 20f;
+                float markerX = buttonX - markerSize - 10f;
+                float markerY = currentY + buttonHeight * 0.5f;
+                
+                // Draw a triangle pointing right
+                Vector4 markerColor = new Vector4(0.0f, 1.0f, 0.8f, 1.0f);
+                
+                // Draw triangle as three lines (since we don't have a filled triangle primitive)
+                Vector2 point1 = new Vector2(markerX, markerY - markerSize * 0.4f);
+                Vector2 point2 = new Vector2(markerX, markerY + markerSize * 0.4f);
+                Vector2 point3 = new Vector2(markerX + markerSize * 0.7f, markerY);
+                
+                _renderer.DrawLine(point1, point2, markerColor, 2f);
+                _renderer.DrawLine(point2, point3, markerColor, 2f);
+                _renderer.DrawLine(point3, point1, markerColor, 2f);
+                
+                // Draw filled triangle by drawing lines
+                for (float offset = 0; offset < markerSize * 0.4f; offset += 1.5f)
+                {
+                    Vector2 topPoint = new Vector2(markerX, markerY - markerSize * 0.4f + offset);
+                    Vector2 bottomPoint = new Vector2(markerX, markerY + markerSize * 0.4f - offset);
+                    float xPos = markerX + offset * (markerSize * 0.7f / (markerSize * 0.4f));
+                    Vector2 rightPoint = new Vector2(xPos, markerY);
+                    
+                    _renderer.DrawLine(topPoint, rightPoint, markerColor, 1.5f);
+                    _renderer.DrawLine(bottomPoint, rightPoint, markerColor, 1.5f);
+                }
+            }
             
             // TODO: Render button text
         }
