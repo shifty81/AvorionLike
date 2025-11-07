@@ -7,6 +7,7 @@ using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Input;
+using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
 
@@ -106,7 +107,7 @@ public class GraphicsWindow : IDisposable
         _gameHUD = new GameHUD(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         _gameMenuSystem = new GameMenuSystem(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         
-        // Initialize ImGui for DEBUG/CONSOLE ONLY
+        // Initialize ImGui for DEBUG/CONSOLE ONLY using Silk.NET extension
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
         _debugHUD = new HUDSystem(_gameEngine);
         
