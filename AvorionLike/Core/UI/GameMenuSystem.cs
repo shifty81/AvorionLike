@@ -17,10 +17,15 @@ public class GameMenuSystem
     private bool _isPauseMenuOpen = false;
     private bool _isSettingsMenuOpen = false;
     private int _selectedMenuItem = 0;
+    private int _pauseMenuItemCount = 5; // Resume, Settings, Save, Load, Main Menu
     
 #pragma warning disable CS0414 // Field is assigned but its value is never used - reserved for future settings tab implementation
     private int _selectedSettingsTab = 0;
 #pragma warning restore CS0414
+    
+    // Track key presses to prevent repeat actions
+    private readonly HashSet<Key> _keysPressed = new HashSet<Key>();
+    private readonly HashSet<Key> _keysPressedLastFrame = new HashSet<Key>();
     
     // Settings values
     private float _difficulty = 1.0f;
@@ -73,9 +78,102 @@ public class GameMenuSystem
         
         if (!IsMenuOpen) return;
         
-        // TODO: Handle keyboard navigation through menu items
-        // For now, this is a placeholder - full keyboard/mouse menu interaction
-        // would require more sophisticated input handling
+        // Update current keys pressed
+        _keysPressed.Clear();
+        foreach (var key in keyboard.SupportedKeys)
+        {
+            if (keyboard.IsKeyPressed(key))
+            {
+                _keysPressed.Add(key);
+            }
+        }
+        
+        // Handle keyboard navigation for pause menu
+        if (_isPauseMenuOpen)
+        {
+            HandlePauseMenuInput();
+        }
+        else if (_isSettingsMenuOpen)
+        {
+            HandleSettingsMenuInput();
+        }
+        
+        // Copy current keys to last frame
+        _keysPressedLastFrame.Clear();
+        foreach (var key in _keysPressed)
+        {
+            _keysPressedLastFrame.Add(key);
+        }
+    }
+    
+    private bool WasKeyJustPressed(Key key)
+    {
+        return _keysPressed.Contains(key) && !_keysPressedLastFrame.Contains(key);
+    }
+    
+    private void HandlePauseMenuInput()
+    {
+        // Navigate up
+        if (WasKeyJustPressed(Key.Up) || WasKeyJustPressed(Key.W))
+        {
+            _selectedMenuItem--;
+            if (_selectedMenuItem < 0)
+                _selectedMenuItem = _pauseMenuItemCount - 1;
+        }
+        
+        // Navigate down
+        if (WasKeyJustPressed(Key.Down) || WasKeyJustPressed(Key.S))
+        {
+            _selectedMenuItem++;
+            if (_selectedMenuItem >= _pauseMenuItemCount)
+                _selectedMenuItem = 0;
+        }
+        
+        // Activate selected item
+        if (WasKeyJustPressed(Key.Enter) || WasKeyJustPressed(Key.Space))
+        {
+            ExecutePauseMenuItem(_selectedMenuItem);
+        }
+    }
+    
+    private void HandleSettingsMenuInput()
+    {
+        // For now, settings menu just needs Back functionality
+        // Can be expanded later with tab navigation
+        if (WasKeyJustPressed(Key.Backspace))
+        {
+            // Go back to pause menu
+            _isSettingsMenuOpen = false;
+            _isPauseMenuOpen = true;
+        }
+    }
+    
+    private void ExecutePauseMenuItem(int itemIndex)
+    {
+        switch (itemIndex)
+        {
+            case 0: // Resume
+                _isPauseMenuOpen = false;
+                Console.WriteLine("Game resumed");
+                break;
+            case 1: // Settings
+                _isPauseMenuOpen = false;
+                _isSettingsMenuOpen = true;
+                Console.WriteLine("Opening settings menu");
+                break;
+            case 2: // Save Game
+                Console.WriteLine("Save game functionality - to be implemented");
+                // TODO: Show save dialog
+                break;
+            case 3: // Load Game
+                Console.WriteLine("Load game functionality - to be implemented");
+                // TODO: Show load dialog
+                break;
+            case 4: // Main Menu
+                Console.WriteLine("Return to main menu - to be implemented");
+                // TODO: Show confirmation dialog, then return to main menu
+                break;
+        }
     }
     
     public void Render()
