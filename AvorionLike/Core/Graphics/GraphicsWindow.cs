@@ -23,19 +23,16 @@ public class GraphicsWindow : IDisposable
     private Camera? _camera;
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
-    private PlayerUIManager? _playerUIManager;
     private PlayerControlSystem? _playerControlSystem;
-    private TitleScreen? _titleScreen;
     
-    // Individual UI systems (managed by PlayerUIManager)
-    private HUDSystem? _hudSystem;
-    private MenuSystem? _menuSystem;
-    private InventoryUI? _inventoryUI;
-    private ShipBuilderUI? _shipBuilderUI;
-    private FuturisticHUD? _futuristicHUD;
-    private CrewManagementUI? _crewManagementUI;
-    private SubsystemManagementUI? _subsystemManagementUI;
-    private FleetMissionUI? _fleetMissionUI;
+    // Custom UI system (for game HUD and menus)
+    private CustomUIRenderer? _customUIRenderer;
+    private GameHUD? _gameHUD;
+    private GameMenuSystem? _gameMenuSystem;
+    
+    // ImGui-based UI systems (for debug/console ONLY)
+    private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
+    private bool _showDebugUI = false;  // Toggle for debug UI
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -45,6 +42,8 @@ public class GraphicsWindow : IDisposable
     private Vector2 _lastMousePos;
     private bool _firstMouse = true;
     private bool _uiWantsMouse = false;
+    private bool _altKeyHeld = false; // Track if ALT is held for showing mouse cursor
+    private bool _mouseLookEnabled = true; // Track if mouse look is active
     
     // Timing
     private float _deltaTime = 0.0f;
@@ -66,9 +65,9 @@ public class GraphicsWindow : IDisposable
         {
             _playerControlSystem.ControlledShipId = shipId;
         }
-        if (_playerUIManager != null)
+        if (_gameHUD != null)
         {
-            _playerUIManager.PlayerShipId = shipId;
+            _gameHUD.PlayerShipId = shipId;
         }
     }
 
@@ -101,30 +100,14 @@ public class GraphicsWindow : IDisposable
         _voxelRenderer = new EnhancedVoxelRenderer(_gl);
         _starfieldRenderer = new StarfieldRenderer(_gl);
 
-        // Initialize ImGui
-        _imguiController = new ImGuiController(_gl, _window!, _inputContext);
-        _titleScreen = new TitleScreen(_gameEngine);
-        _hudSystem = new HUDSystem(_gameEngine);
-        _menuSystem = new MenuSystem(_gameEngine);
-        _inventoryUI = new InventoryUI(_gameEngine);
-        _shipBuilderUI = new ShipBuilderUI(_gameEngine);
-        _futuristicHUD = new FuturisticHUD(_gameEngine);
-        _crewManagementUI = new CrewManagementUI(_gameEngine);
-        _subsystemManagementUI = new SubsystemManagementUI(_gameEngine);
-        _fleetMissionUI = new FleetMissionUI(_gameEngine);
+        // Initialize custom UI renderer for game HUD and menus
+        _customUIRenderer = new CustomUIRenderer(_gl, _window.Size.X, _window.Size.Y);
+        _gameHUD = new GameHUD(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
+        _gameMenuSystem = new GameMenuSystem(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         
-        // Initialize Player UI Manager
-        _playerUIManager = new PlayerUIManager(
-            _gameEngine,
-            _hudSystem,
-            _menuSystem,
-            _inventoryUI,
-            _shipBuilderUI,
-            _futuristicHUD,
-            _crewManagementUI,
-            _subsystemManagementUI,
-            _fleetMissionUI
-        );
+        // Initialize ImGui for DEBUG/CONSOLE ONLY
+        _imguiController = new ImGuiController(_gl, _window!, _inputContext);
+        _debugHUD = new HUDSystem(_gameEngine);
         
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
@@ -146,7 +129,8 @@ public class GraphicsWindow : IDisposable
         foreach (var mouse in _inputContext.Mice)
         {
             mouse.MouseMove += OnMouseMove;
-            mouse.Cursor.CursorMode = CursorMode.Raw; // Capture mouse for flight controls
+            // Start with Raw mode for free look
+            mouse.Cursor.CursorMode = CursorMode.Raw;
         }
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
@@ -154,7 +138,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  Camera Mode (Default):");
         Console.WriteLine("    WASD - Move camera");
         Console.WriteLine("    Space/Shift - Move up/down");
-        Console.WriteLine("    Mouse - Look around");
+        Console.WriteLine("    Mouse - Look around (free-look)");
         Console.WriteLine("  Ship Control Mode (Press C to toggle):");
         Console.WriteLine("    WASD - Thrust (Forward/Back/Left/Right)");
         Console.WriteLine("    Space/Shift - Thrust Up/Down");
@@ -162,13 +146,9 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    Q/E - Roll");
         Console.WriteLine("    X - Emergency Brake");
         Console.WriteLine("  UI Controls:");
-        Console.WriteLine("    F1/F2/F3 - Toggle debug panels");
-        Console.WriteLine("    F4 - Toggle Futuristic HUD");
-        Console.WriteLine("    I - Toggle Inventory");
-        Console.WriteLine("    B - Toggle Ship Builder");
-        Console.WriteLine("    TAB - Toggle Player Status");
-        Console.WriteLine("    J - Toggle Mission Info");
-        Console.WriteLine("    ESC - Exit");
+        Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
+        Console.WriteLine("    ESC - Pause Menu (press again to close)");
+        Console.WriteLine("    F1 - Toggle Debug/Console UI");
         Console.WriteLine("=====================================\n");
     }
 
@@ -176,28 +156,54 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _playerUIManager == null || 
-            _playerControlSystem == null || _titleScreen == null) return;
+        if (_camera == null || _imguiController == null || _playerControlSystem == null || 
+            _inputContext == null || _gameHUD == null || _gameMenuSystem == null) return;
 
-        // Update ImGui
-        _imguiController.Update(_deltaTime);
-        
-        // Update title screen
-        _titleScreen.Update(_deltaTime);
-        
-        // If title screen is active, only handle its input
-        if (_titleScreen.IsActive)
+        // Update ImGui (for debug console only)
+        if (_showDebugUI)
         {
-            _titleScreen.HandleInput();
-            return;
+            _imguiController.Update(_deltaTime);
         }
         
-        // Check if ImGui wants mouse input
+        // Update custom UI
+        _gameHUD.Update(_deltaTime);
+        
+        // Check if ImGui wants mouse input (only when debug UI is shown)
         var io = ImGuiNET.ImGui.GetIO();
-        _uiWantsMouse = io.WantCaptureMouse;
+        _uiWantsMouse = _showDebugUI && io.WantCaptureMouse;
+        
+        // Check if ALT key is held
+        _altKeyHeld = _keysPressed.Contains(Key.AltLeft) || _keysPressed.Contains(Key.AltRight);
+        
+        // Determine if menu is open
+        bool menuOpen = _gameMenuSystem.IsMenuOpen;
+        
+        // Update mouse cursor mode based on state
+        foreach (var mouse in _inputContext.Mice)
+        {
+            if (menuOpen || _altKeyHeld)
+            {
+                // Show cursor when menu is open or ALT is held
+                if (mouse.Cursor.CursorMode != CursorMode.Normal)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Normal;
+                    _mouseLookEnabled = false;
+                }
+            }
+            else
+            {
+                // Hide cursor and enable free-look during normal gameplay
+                if (mouse.Cursor.CursorMode != CursorMode.Raw)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Raw;
+                    _firstMouse = true; // Reset mouse to avoid jumps
+                    _mouseLookEnabled = true;
+                }
+            }
+        }
 
         // Process keyboard input
-        bool anyUIOpen = _playerUIManager.IsAnyPanelOpen;
+        bool anyUIOpen = menuOpen;
         
         if (!io.WantCaptureKeyboard && !anyUIOpen)
         {
@@ -233,22 +239,26 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Handle UI input
-        _playerUIManager.HandleInput();
+        // Handle menu input (ESC key handling)
+        if (_gameMenuSystem != null)
+        {
+            foreach (var keyboard in _inputContext.Keyboards)
+            {
+                _gameMenuSystem.HandleInput(keyboard);
+            }
+        }
 
         // Update game engine (pause if menu is open)
         if (!anyUIOpen)
         {
             _gameEngine.Update();
         }
-        
-        _playerUIManager.Update(_deltaTime);
     }
 
     private void OnRender(double deltaTime)
     {
         if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || 
-            _window == null || _imguiController == null || _playerUIManager == null || _titleScreen == null) return;
+            _window == null || _imguiController == null || _gameHUD == null || _gameMenuSystem == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -279,18 +289,18 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Render title screen if active (overlays everything)
-        if (_titleScreen.IsActive)
-        {
-            _titleScreen.Render();
-        }
-        else
-        {
-            // Render Player UI Manager (handles all UI panels)
-            _playerUIManager.Render();
-        }
+        // Render custom game HUD (crosshair, ship status, radar, corner frames)
+        _gameHUD.Render();
         
-        _imguiController.Render();
+        // Render custom game menu (pause menu, settings) if open
+        _gameMenuSystem.Render();
+        
+        // Render debug/console UI with ImGui (only if enabled with F1)
+        if (_showDebugUI && _debugHUD != null)
+        {
+            _debugHUD.Render();
+            _imguiController.Render();
+        }
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)
@@ -306,10 +316,18 @@ public class GraphicsWindow : IDisposable
             _playerControlMode = !_playerControlMode;
             Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control" : "Camera")}");
         }
-
+        
+        // Toggle debug UI with F1
+        if (key == Key.F1)
+        {
+            _showDebugUI = !_showDebugUI;
+            Console.WriteLine($"Debug UI: {(_showDebugUI ? "Enabled" : "Disabled")}");
+        }
+        
+        // Handle ESC for pause menu
         if (key == Key.Escape)
         {
-            _window?.Close();
+            _gameMenuSystem?.TogglePauseMenu();
         }
     }
 
@@ -325,8 +343,8 @@ public class GraphicsWindow : IDisposable
     {
         if (_camera == null) return;
         
-        // Don't process mouse movement if UI wants the mouse
-        if (_uiWantsMouse) return;
+        // Don't process mouse movement if UI wants the mouse or ALT is held or menu is open
+        if (_uiWantsMouse || _altKeyHeld || !_mouseLookEnabled) return;
 
         if (_firstMouse)
         {
@@ -352,6 +370,7 @@ public class GraphicsWindow : IDisposable
     {
         if (!_disposed)
         {
+            _customUIRenderer?.Dispose();
             _imguiController?.Dispose();
             _voxelRenderer?.Dispose();
             _starfieldRenderer?.Dispose();
