@@ -1,12 +1,13 @@
 using System.Numerics;
 using System.Collections.Generic;
 using Silk.NET.Input;
+using ImGuiNET;
 
 namespace AvorionLike.Core.UI;
 
 /// <summary>
 /// Custom-rendered game menu system (pause menu, settings, etc.)
-/// Uses CustomUIRenderer instead of ImGui
+/// Uses CustomUIRenderer for graphics and ImGui for text rendering
 /// </summary>
 public class GameMenuSystem
 {
@@ -194,6 +195,112 @@ public class GameMenuSystem
         }
         
         _renderer.EndRender();
+        
+        // Render text labels using ImGui after CustomUIRenderer is done
+        RenderTextLabels();
+    }
+    
+    private void RenderTextLabels()
+    {
+        if (!IsMenuOpen) return;
+        
+        var drawList = ImGui.GetForegroundDrawList();
+        
+        if (_isPauseMenuOpen)
+        {
+            RenderPauseMenuText(drawList);
+        }
+        else if (_isSettingsMenuOpen)
+        {
+            RenderSettingsMenuText(drawList);
+        }
+    }
+    
+    private void RenderPauseMenuText(ImDrawListPtr drawList)
+    {
+        float panelWidth = 400f;
+        float panelHeight = 500f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        float titleBarHeight = 60f;
+        
+        // Title text
+        string titleText = "PAUSED";
+        var titleSize = ImGui.CalcTextSize(titleText);
+        float titleX = panelX + (panelWidth - titleSize.X) * 0.5f;
+        float titleY = panelY + (titleBarHeight - titleSize.Y) * 0.5f;
+        
+        // Draw title with shadow for depth
+        uint shadowColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.5f));
+        uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1.0f, 0.8f, 1.0f));
+        drawList.AddText(new Vector2(titleX + 2, titleY + 2), shadowColor, titleText);
+        drawList.AddText(new Vector2(titleX, titleY), titleColor, titleText);
+        
+        // Menu item labels
+        string[] menuItems = { "Resume", "Settings", "Save Game", "Load Game", "Main Menu" };
+        float buttonWidth = panelWidth - 80f;
+        float buttonHeight = 50f;
+        float buttonX = panelX + 40f;
+        float buttonY = panelY + titleBarHeight + 40f;
+        float buttonSpacing = 15f;
+        
+        for (int i = 0; i < menuItems.Length; i++)
+        {
+            float currentY = buttonY + i * (buttonHeight + buttonSpacing);
+            
+            // Center text in button
+            var textSize = ImGui.CalcTextSize(menuItems[i]);
+            float textX = buttonX + (buttonWidth - textSize.X) * 0.5f;
+            float textY = currentY + (buttonHeight - textSize.Y) * 0.5f;
+            
+            // Text color (brighter for selected item)
+            uint textColor = (i == _selectedMenuItem)
+                ? ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f))
+                : ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
+            
+            // Draw text with shadow
+            drawList.AddText(new Vector2(textX + 1, textY + 1), shadowColor, menuItems[i]);
+            drawList.AddText(new Vector2(textX, textY), textColor, menuItems[i]);
+        }
+    }
+    
+    private void RenderSettingsMenuText(ImDrawListPtr drawList)
+    {
+        float panelWidth = 700f;
+        float panelHeight = 600f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        float titleBarHeight = 60f;
+        
+        // Title text
+        string titleText = "SETTINGS";
+        var titleSize = ImGui.CalcTextSize(titleText);
+        float titleX = panelX + (panelWidth - titleSize.X) * 0.5f;
+        float titleY = panelY + (titleBarHeight - titleSize.Y) * 0.5f;
+        
+        // Draw title with shadow
+        uint shadowColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.5f));
+        uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1.0f, 0.8f, 1.0f));
+        drawList.AddText(new Vector2(titleX + 2, titleY + 2), shadowColor, titleText);
+        drawList.AddText(new Vector2(titleX, titleY), titleColor, titleText);
+        
+        // Content text
+        float contentY = panelY + titleBarHeight + 30f;
+        float contentX = panelX + 50f;
+        
+        string[] settingsText = {
+            "Settings menu coming soon!",
+            "",
+            "Press BACKSPACE to return to pause menu"
+        };
+        
+        uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
+        float lineHeight = ImGui.GetTextLineHeightWithSpacing();
+        
+        for (int i = 0; i < settingsText.Length; i++)
+        {
+            drawList.AddText(new Vector2(contentX, contentY + i * lineHeight), textColor, settingsText[i]);
+        }
     }
     
     private void RenderPauseMenu()
@@ -227,7 +334,7 @@ public class GameMenuSystem
             new Vector2(panelX + panelWidth, panelY + titleBarHeight),
             panelBorderColor, 2f);
         
-        // TODO: Add text rendering for "PAUSED" title
+        // Text is rendered separately in RenderTextLabels() using ImGui
         
         // Menu items (rendered as buttons)
         string[] menuItems = { "Resume", "Settings", "Save Game", "Load Game", "Main Menu" };
@@ -287,7 +394,7 @@ public class GameMenuSystem
                 }
             }
             
-            // TODO: Render button text
+            // Text is rendered separately in RenderTextLabels() using ImGui
         }
     }
     
@@ -321,9 +428,8 @@ public class GameMenuSystem
             new Vector2(panelX + panelWidth, panelY + titleBarHeight),
             panelBorderColor, 2f);
         
-        // TODO: Add tabs for Video/Sound/Gameplay settings
-        // TODO: Add sliders for difficulty, volume, etc.
-        // TODO: Add "Back" button
+        // Text and content are rendered in RenderTextLabels() using ImGui
+        // This allows for easy text rendering while keeping the visual style consistent
         
         // For now, just render a placeholder settings panel
         float contentY = panelY + titleBarHeight + 30f;
