@@ -247,7 +247,8 @@ public class GameMenuSystem
     {
         var saveManager = SaveGameManager.Instance;
         var saves = saveManager.ListSaveGames();
-        int slotCount = Math.Max(1, saves.Count + 1); // At least 1 slot for new save
+        // Limit navigation to visible slots (max 5)
+        int slotCount = Math.Min(5, Math.Max(1, saves.Count + 1));
         
         // Navigate save slots
         if (WasKeyJustPressed(Key.Up) || WasKeyJustPressed(Key.W))
@@ -326,13 +327,16 @@ public class GameMenuSystem
             var saveData = new SaveGameData
             {
                 SaveName = _newSaveName,
-                GalaxySeed = 12345, // TODO: Get from game engine
+                // TODO: Get actual galaxy seed from GameEngine (requires GameEngine to expose it as a property)
+                GalaxySeed = 12345,
                 GameState = new Dictionary<string, object>(),
                 Entities = new List<EntityData>()
             };
             
-            // TODO: Serialize actual game state from _gameEngine
-            // For now, just save metadata
+            // TODO: Implement full game state serialization
+            // This requires serializing all entities and components from EntityManager
+            // Current implementation only saves metadata for UI demonstration purposes
+            // To complete: Add EntityManager.SerializeAllEntities() method
             
             var fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
             if (saveManager.SaveGame(saveData, fileName))
@@ -365,8 +369,10 @@ public class GameMenuSystem
                 if (saveData != null)
                 {
                     Console.WriteLine($"Game loaded: {saveInfo.SaveName}");
-                    // TODO: Apply loaded data to _gameEngine
-                    // For now, just log the load
+                    // TODO: Implement full game state restoration
+                    // This requires deserializing entities and restoring EntityManager state
+                    // Current implementation only loads metadata for UI demonstration purposes
+                    // To complete: Add EntityManager.DeserializeAllEntities(saveData.Entities) method
                 }
                 else
                 {
