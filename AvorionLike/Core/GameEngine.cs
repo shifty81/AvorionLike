@@ -316,6 +316,16 @@ public class GameEngine
                 SerializeComponent<InventoryComponent>(entity, entityData);
                 SerializeComponent<ProgressionComponent>(entity, entityData);
                 SerializeComponent<FactionComponent>(entity, entityData);
+                SerializeComponent<PowerComponent>(entity, entityData);
+                SerializeComponent<PlayerPodComponent>(entity, entityData);
+                SerializeComponent<DockingComponent>(entity, entityData);
+                SerializeComponent<PodSkillTreeComponent>(entity, entityData);
+                SerializeComponent<PodAbilitiesComponent>(entity, entityData);
+                SerializeComponent<ShipSubsystemComponent>(entity, entityData);
+                SerializeComponent<PodSubsystemComponent>(entity, entityData);
+                SerializeComponent<ShipClassComponent>(entity, entityData);
+                SerializeComponent<CrewComponent>(entity, entityData);
+                SerializeComponent<SubsystemInventoryComponent>(entity, entityData);
 
                 saveData.Entities.Add(entityData);
             }
@@ -482,6 +492,66 @@ public class GameEngine
                     var factionComponent = new FactionComponent();
                     factionComponent.Deserialize(componentData.Data);
                     EntityManager.AddComponent(entityId, factionComponent);
+                    break;
+
+                case "AvorionLike.Core.Power.PowerComponent":
+                    var powerComponent = new PowerComponent();
+                    powerComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, powerComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.PlayerPodComponent":
+                    var podComponent = new PlayerPodComponent();
+                    podComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, podComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.DockingComponent":
+                    var dockingComponent = new DockingComponent();
+                    dockingComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, dockingComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.PodSkillTreeComponent":
+                    var skillTreeComponent = new PodSkillTreeComponent();
+                    skillTreeComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, skillTreeComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.PodAbilitiesComponent":
+                    var abilitiesComponent = new PodAbilitiesComponent();
+                    abilitiesComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, abilitiesComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.ShipSubsystemComponent":
+                    var shipSubsystemComponent = new ShipSubsystemComponent();
+                    shipSubsystemComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, shipSubsystemComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.PodSubsystemComponent":
+                    var podSubsystemComponent = new PodSubsystemComponent();
+                    podSubsystemComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, podSubsystemComponent);
+                    break;
+
+                case "AvorionLike.Core.Fleet.ShipClassComponent":
+                    var shipClassComponent = new ShipClassComponent();
+                    shipClassComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, shipClassComponent);
+                    break;
+
+                case "AvorionLike.Core.Fleet.CrewComponent":
+                    var crewComponent = new CrewComponent();
+                    crewComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, crewComponent);
+                    break;
+
+                case "AvorionLike.Core.Fleet.SubsystemInventoryComponent":
+                    var subsystemInventoryComponent = new SubsystemInventoryComponent();
+                    subsystemInventoryComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, subsystemInventoryComponent);
                     break;
 
                 default:

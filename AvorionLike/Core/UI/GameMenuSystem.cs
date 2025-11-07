@@ -323,25 +323,10 @@ public class GameMenuSystem
     {
         try
         {
-            var saveManager = SaveGameManager.Instance;
-            var saveData = new SaveGameData
+            // Use GameEngine's SaveGame method which handles full serialization
+            if (_gameEngine.SaveGame(_newSaveName))
             {
-                SaveName = _newSaveName,
-                // TODO: Get actual galaxy seed from GameEngine (requires GameEngine to expose it as a property)
-                GalaxySeed = 12345,
-                GameState = new Dictionary<string, object>(),
-                Entities = new List<EntityData>()
-            };
-            
-            // TODO: Implement full game state serialization
-            // This requires serializing all entities and components from EntityManager
-            // Current implementation only saves metadata for UI demonstration purposes
-            // To complete: Add EntityManager.SerializeAllEntities() method
-            
-            var fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
-            if (saveManager.SaveGame(saveData, fileName))
-            {
-                Console.WriteLine($"Game saved as {fileName}");
+                Console.WriteLine($"Game saved as {_newSaveName}");
             }
             else
             {
@@ -358,21 +343,16 @@ public class GameMenuSystem
     {
         try
         {
-            var saveManager = SaveGameManager.Instance;
-            var saves = saveManager.ListSaveGames();
+            var saves = _gameEngine.GetSaveGameInfo();
             
             if (_selectedSaveSlot >= 0 && _selectedSaveSlot < saves.Count)
             {
                 var saveInfo = saves[_selectedSaveSlot];
-                var saveData = saveManager.LoadGame(saveInfo.FileName);
                 
-                if (saveData != null)
+                // Use GameEngine's LoadGame method which handles full deserialization
+                if (_gameEngine.LoadGame(saveInfo.FileName.Replace(".save", "")))
                 {
                     Console.WriteLine($"Game loaded: {saveInfo.SaveName}");
-                    // TODO: Implement full game state restoration
-                    // This requires deserializing entities and restoring EntityManager state
-                    // Current implementation only loads metadata for UI demonstration purposes
-                    // To complete: Add EntityManager.DeserializeAllEntities(saveData.Entities) method
                 }
                 else
                 {
