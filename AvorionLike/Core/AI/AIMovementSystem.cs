@@ -11,6 +11,7 @@ namespace AvorionLike.Core.AI;
 public class AIMovementSystem
 {
     private readonly EntityManager _entityManager;
+    private static readonly Random _random = new Random();
     
     public AIMovementSystem(EntityManager entityManager)
     {
@@ -241,9 +242,9 @@ public class AIMovementSystem
         if (ai.StateTimer % 3f < 1f)
         {
             Vector3 evasionVector = new Vector3(
-                (float)(new Random().NextDouble() - 0.5),
-                (float)(new Random().NextDouble() - 0.5),
-                (float)(new Random().NextDouble() - 0.5)
+                (float)(_random.NextDouble() - 0.5),
+                (float)(_random.NextDouble() - 0.5),
+                (float)(_random.NextDouble() - 0.5)
             );
             ApplyThrust(physics, evasionVector * 150f, deltaTime);
         }

@@ -4,6 +4,7 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Mining;
 using AvorionLike.Core.Voxel;
+using AvorionLike.Core.RPG;
 
 namespace AvorionLike.Core.AI;
 
@@ -73,6 +74,30 @@ public class AIPerceptionSystem
             var combat = _entityManager.GetComponent<CombatComponent>(physics.EntityId);
             var structure = _entityManager.GetComponent<VoxelStructureComponent>(physics.EntityId);
             
+            // Check faction relations for hostility
+            bool isHostile = false;
+            bool isFriendly = false;
+            
+            var selfFaction = _entityManager.GetComponent<FactionComponent>(selfId);
+            var targetFaction = _entityManager.GetComponent<FactionComponent>(physics.EntityId);
+            
+            if (selfFaction != null && targetFaction != null)
+            {
+                // Check faction standing based on reputation
+                if (selfFaction.Reputation.TryGetValue(targetFaction.FactionName, out int standing))
+                {
+                    isHostile = standing < -30; // Hostile if reputation below -30
+                    isFriendly = standing > 30; // Friendly if reputation above 30
+                }
+                else
+                {
+                    // No previous interaction - treat as neutral unless they're different factions
+                    isHostile = selfFaction.FactionName != targetFaction.FactionName && 
+                               selfFaction.FactionName != "Neutral" && 
+                               targetFaction.FactionName != "Neutral";
+                }
+            }
+            
             float shieldPercentage = 0f;
             float hullPercentage = 1f;
             
@@ -95,8 +120,8 @@ public class AIPerceptionSystem
                 Position = physics.Position,
                 Velocity = physics.Velocity,
                 Distance = distance,
-                IsHostile = false, // Would be determined by faction system
-                IsFriendly = false,
+                IsHostile = isHostile,
+                IsFriendly = isFriendly,
                 ShieldPercentage = shieldPercentage,
                 HullPercentage = hullPercentage
             });
