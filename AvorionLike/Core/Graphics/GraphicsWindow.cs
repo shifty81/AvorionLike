@@ -146,6 +146,7 @@ public class GraphicsWindow : IDisposable
         foreach (var mouse in _inputContext.Mice)
         {
             mouse.MouseMove += OnMouseMove;
+            mouse.Cursor.CursorMode = CursorMode.Raw; // Capture mouse for flight controls
         }
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
