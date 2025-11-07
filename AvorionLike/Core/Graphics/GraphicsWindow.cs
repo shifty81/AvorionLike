@@ -101,7 +101,7 @@ public class GraphicsWindow : IDisposable
         _starfieldRenderer = new StarfieldRenderer(_gl);
 
         // Initialize custom UI renderer for game HUD and menus
-        _customUIRenderer = new CustomUIRenderer(_gl, _window.Size.X, _window.Size.Y);
+        _customUIRenderer = new CustomUIRenderer(_gl, _window!.Size.X, _window.Size.Y);
         _gameHUD = new GameHUD(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         _gameMenuSystem = new GameMenuSystem(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         
