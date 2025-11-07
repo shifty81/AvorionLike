@@ -842,7 +842,12 @@ class Program
                             {
                                 var blockType = (x == 1 && y == 0) ? BlockType.Generator : BlockType.Cargo;
                                 // Create a gradient from Naonite (green) to Trinium (blue) to Xanion (gold)
-                                string material = x == 0 ? "Naonite" : (x == 1 ? "Trinium" : "Xanion");
+                                string material = x switch
+                                {
+                                    0 => "Naonite",
+                                    1 => "Trinium",
+                                    _ => "Xanion"
+                                };
                                 voxelComponent.AddBlock(new VoxelBlock(
                                     new Vector3(x * 3, y * 3, 0),
                                     new Vector3(2.5f, 2.5f, 2.5f),
