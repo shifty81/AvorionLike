@@ -1,5 +1,6 @@
 using ImGuiNET;
 using System.Numerics;
+using AvorionLike.Core.Configuration;
 
 namespace AvorionLike.Core.UI;
 
@@ -46,6 +47,47 @@ public class MenuSystem
     public MenuSystem(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
+        LoadSettingsFromConfig();
+    }
+    
+    /// <summary>
+    /// Load current settings from configuration manager
+    /// </summary>
+    private void LoadSettingsFromConfig()
+    {
+        var config = ConfigurationManager.Instance.Config;
+        
+        // Graphics settings
+        _vsync = config.Graphics.VSync;
+        _targetFPS = config.Graphics.TargetFrameRate;
+        _showFPS = config.Development.ShowDebugOverlay;
+        
+        // Determine resolution index
+        string currentRes = $"{config.Graphics.ResolutionWidth}x{config.Graphics.ResolutionHeight}";
+        for (int i = 0; i < _resolutions.Length; i++)
+        {
+            if (_resolutions[i] == currentRes)
+            {
+                _selectedResolution = i;
+                break;
+            }
+        }
+        
+        // Audio settings
+        _masterVolume = config.Audio.MasterVolume;
+        _musicVolume = config.Audio.MusicVolume;
+        _sfxVolume = config.Audio.SfxVolume;
+        
+        // Gameplay settings
+        _autoSave = config.Gameplay.EnableAutoSave;
+        _autoSaveInterval = config.Gameplay.AutoSaveIntervalSeconds / 60; // Convert seconds to minutes
+        _gameplayDifficulty = config.Gameplay.Difficulty switch
+        {
+            0 => 0.5f,
+            1 => 1.0f,
+            2 => 1.5f,
+            _ => 1.0f
+        };
     }
     
     public void ShowMainMenu()
@@ -433,6 +475,47 @@ public class MenuSystem
     private void ApplySettings()
     {
         Console.WriteLine("Applying settings...");
+        
+        var config = ConfigurationManager.Instance.Config;
+        
+        // Parse selected resolution
+        var resParts = _resolutions[_selectedResolution].Split('x');
+        if (resParts.Length == 2)
+        {
+            config.Graphics.ResolutionWidth = int.Parse(resParts[0]);
+            config.Graphics.ResolutionHeight = int.Parse(resParts[1]);
+        }
+        
+        // Apply graphics settings
+        config.Graphics.VSync = _vsync;
+        config.Graphics.TargetFrameRate = _targetFPS;
+        config.Development.ShowDebugOverlay = _showFPS;
+        
+        // Apply audio settings
+        config.Audio.MasterVolume = _masterVolume;
+        config.Audio.MusicVolume = _musicVolume;
+        config.Audio.SfxVolume = _sfxVolume;
+        
+        // Apply gameplay settings
+        config.Gameplay.EnableAutoSave = _autoSave;
+        config.Gameplay.AutoSaveIntervalSeconds = _autoSaveInterval * 60; // Convert minutes to seconds
+        
+        // Convert difficulty multiplier to integer setting
+        config.Gameplay.Difficulty = _gameplayDifficulty switch
+        {
+            <= 0.75f => 0, // Easy
+            <= 1.25f => 1, // Normal
+            <= 1.75f => 2, // Hard
+            _ => 2 // Very Hard maps to Hard
+        };
+        
+        // Save configuration to disk
+        ConfigurationManager.Instance.SaveConfiguration();
+        
+        // Apply configuration changes
+        ConfigurationManager.Instance.ApplyConfiguration();
+        
+        // Log what was applied
         Console.WriteLine($"  Resolution: {_resolutions[_selectedResolution]}");
         Console.WriteLine($"  VSync: {_vsync}");
         Console.WriteLine($"  Target FPS: {_targetFPS}");
@@ -443,14 +526,10 @@ public class MenuSystem
         Console.WriteLine($"  Mouse Sensitivity: {_mouseSensitivity:F2}");
         Console.WriteLine($"  Difficulty: {_gameplayDifficulty:F2}x");
         Console.WriteLine($"  Auto-Save: {_autoSave} ({_autoSaveInterval} minutes)");
+        Console.WriteLine("Settings saved to configuration file.");
         
-        // TODO: Apply settings to game engine
-        // This would involve:
-        // - Resizing window if resolution changed
-        // - Updating VSync setting
-        // - Applying volume changes to audio system
-        // - Updating mouse sensitivity in camera/input systems
-        // - Setting difficulty multipliers in game systems
+        // Note: Some settings like resolution and VSync changes require restarting the graphics window
+        // to take effect. This would need to be handled by the GraphicsWindow class.
     }
     
     private void RenderSaveDialog()
