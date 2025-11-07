@@ -243,6 +243,14 @@ public class MiningSystem : SystemBase
     }
     
     /// <summary>
+    /// Get all asteroids in the sector (for AI)
+    /// </summary>
+    public List<Asteroid> GetAllAsteroids()
+    {
+        return _asteroids.Values.ToList();
+    }
+    
+    /// <summary>
     /// Get all wreckage in the sector
     /// </summary>
     public IEnumerable<Wreckage> GetWreckage()
