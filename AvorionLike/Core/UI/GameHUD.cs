@@ -410,5 +410,35 @@ public class GameHUD
         
         ImGui.End();
         ImGui.PopStyleColor(2);
+        
+        // Controls hint at bottom
+        RenderControlsHint();
+    }
+    
+    private void RenderControlsHint()
+    {
+        float hintX = _screenWidth / 2 - 200f;
+        float hintY = _screenHeight - 90f;
+        
+        ImGui.SetNextWindowPos(new Vector2(hintX, hintY));
+        ImGui.SetNextWindowSize(new Vector2(400, 75));
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.1f, 0.15f, 0.7f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.0f, 0.8f, 1.0f, 0.6f));
+        
+        if (ImGui.Begin("##Controls", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
+            ImGui.Text("CONTROLS");
+            ImGui.PopStyleColor();
+            
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+            ImGui.Text("C: Toggle Ship/Camera | WASD + Space/Shift: Move");
+            ImGui.Text("Arrow Keys + Q/E: Rotate | Mouse: Look | ESC: Exit");
+            ImGui.PopStyleColor();
+        }
+        
+        ImGui.End();
+        ImGui.PopStyleColor(2);
     }
 }
