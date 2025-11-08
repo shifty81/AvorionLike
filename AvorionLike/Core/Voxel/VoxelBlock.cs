@@ -8,6 +8,7 @@ namespace AvorionLike.Core.Voxel;
 /// </summary>
 public class VoxelBlock
 {
+    public Guid Id { get; set; } = Guid.NewGuid();
     public Vector3 Position { get; set; }
     public Vector3 Size { get; set; }
     public string MaterialType { get; set; }
