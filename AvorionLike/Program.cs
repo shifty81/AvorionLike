@@ -66,7 +66,8 @@ class Program
             Console.WriteLine("12. Persistence Demo - Save/Load Game");
             Console.WriteLine("13. Player Pod Demo - Character System");
             Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
-            Console.WriteLine("16. Collision & Damage Test - Test Physics Collision [NEW!]");
+            Console.WriteLine("16. Collision & Damage Test - Test Physics Collision");
+            Console.WriteLine("17. System Verification - Test All Systems [NEW!]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -124,6 +125,9 @@ class Program
                     break;
                 case "16":
                     CollisionDamageDemo();
+                    break;
+                case "17":
+                    SystemVerificationDemo();
                     break;
                 case "0":
                     _running = false;
@@ -1721,6 +1725,86 @@ class Program
         Console.WriteLine("✓ Shield absorption working");
         Console.WriteLine();
         Console.WriteLine("Press Enter to return to main menu...");
+        Console.ReadLine();
+    }
+
+    static void SystemVerificationDemo()
+    {
+        Console.WriteLine("\n=== System Verification - Comprehensive Test Suite ===");
+        Console.WriteLine("This will test all major game systems to ensure they are");
+        Console.WriteLine("coded properly and working as intended.\n");
+        
+        Console.Write("Run verification tests? (y/n): ");
+        if (Console.ReadLine()?.ToLower() != "y")
+        {
+            return;
+        }
+
+        Console.WriteLine();
+        
+        try
+        {
+            var verification = new Core.SystemVerification(_gameEngine!);
+            var report = verification.RunAllTests();
+            
+            Console.WriteLine("\n=== FINAL SUMMARY ===");
+            
+            if (report.PassRate == 100.0)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✓ ALL SYSTEMS OPERATIONAL");
+                Console.WriteLine("✓ All systems are coded properly and working as intended");
+                Console.ResetColor();
+            }
+            else if (report.PassRate >= 90.0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠ SYSTEMS MOSTLY OPERATIONAL");
+                Console.WriteLine($"⚠ {report.FailedTests} minor issues found");
+                Console.ResetColor();
+            }
+            else if (report.PassRate >= 70.0)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine("⚠ SYSTEMS PARTIALLY OPERATIONAL");
+                Console.WriteLine($"⚠ {report.FailedTests} issues require attention");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("✗ SYSTEMS REQUIRE ATTENTION");
+                Console.WriteLine($"✗ {report.FailedTests} critical issues found");
+                Console.ResetColor();
+            }
+            
+            Console.WriteLine($"\nPass Rate: {report.PassRate:F1}%");
+            Console.WriteLine($"Tests Passed: {report.PassedTests}/{report.TotalTests}");
+            
+            if (report.FailureDetails.Any())
+            {
+                Console.WriteLine("\nRecommendations:");
+                Console.WriteLine("  • Review failed test details above");
+                Console.WriteLine("  • Check system implementations");
+                Console.WriteLine("  • Run individual system demos for detailed testing");
+            }
+            else
+            {
+                Console.WriteLine("\nRecommendations:");
+                Console.WriteLine("  ✓ Systems are ready for gameplay");
+                Console.WriteLine("  ✓ Continue with integration testing");
+                Console.WriteLine("  ✓ Proceed with feature development");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ Verification error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
+        
+        Console.WriteLine("\nPress Enter to return to main menu...");
         Console.ReadLine();
     }
 }
