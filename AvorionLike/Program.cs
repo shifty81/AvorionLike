@@ -68,6 +68,7 @@ class Program
             Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
             Console.WriteLine("16. Collision & Damage Test - Test Physics Collision");
             Console.WriteLine("17. System Verification - Test All Systems [NEW!]");
+            Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures [NEW!]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -128,6 +129,9 @@ class Program
                     break;
                 case "17":
                     SystemVerificationDemo();
+                    break;
+                case "18":
+                    ShipGenerationDemo();
                     break;
                 case "0":
                     _running = false;
@@ -1775,6 +1779,82 @@ class Program
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"\n✗ Verification error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
+        
+        Console.WriteLine("\nPress Enter to return to main menu...");
+        Console.ReadLine();
+    }
+    
+    static void ShipGenerationDemo()
+    {
+        Console.WriteLine("\n=== Procedural Ship Generation & Texture Demo ===");
+        Console.WriteLine("This demo showcases the Avorion-inspired ship generation system.");
+        Console.WriteLine();
+        
+        try
+        {
+            var example = new Examples.ShipGenerationExample(_gameEngine!.EntityManager, seed: 12345);
+            
+            Console.WriteLine("What would you like to see?");
+            Console.WriteLine("1. Generate Example Ships (5 different faction ships)");
+            Console.WriteLine("2. Demonstrate Texture Generation (all celestial bodies)");
+            Console.WriteLine("3. Show Material Library (all available materials)");
+            Console.WriteLine("4. Show Ship with Textures (complete integration)");
+            Console.WriteLine("5. Show Available Palettes (color schemes)");
+            Console.WriteLine("6. Run All Demos");
+            Console.Write("\nSelect option (1-6): ");
+            
+            var choice = Console.ReadLine();
+            Console.WriteLine();
+            
+            switch (choice)
+            {
+                case "1":
+                    example.GenerateExampleShips();
+                    break;
+                case "2":
+                    example.DemonstrateTextureGeneration();
+                    break;
+                case "3":
+                    example.DemonstrateMaterialLibrary();
+                    break;
+                case "4":
+                    example.DemonstrateShipWithTextures();
+                    break;
+                case "5":
+                    example.ShowAvailablePalettes();
+                    break;
+                case "6":
+                    example.GenerateExampleShips();
+                    example.DemonstrateTextureGeneration();
+                    example.DemonstrateMaterialLibrary();
+                    example.DemonstrateShipWithTextures();
+                    example.ShowAvailablePalettes();
+                    break;
+                default:
+                    Console.WriteLine("Invalid option! Running all demos...");
+                    example.GenerateExampleShips();
+                    example.DemonstrateTextureGeneration();
+                    break;
+            }
+            
+            Console.WriteLine("\n=== Key Features ===");
+            Console.WriteLine("✅ Function Over Form - Ships prioritize working systems");
+            Console.WriteLine("✅ Faction Diversity - Each faction has unique visual style");
+            Console.WriteLine("✅ Functional Components - Engines, shields, generators, weapons");
+            Console.WriteLine("✅ Procedural Textures - No texture files needed, all generated");
+            Console.WriteLine("✅ Material Library - 20+ materials with PBR properties");
+            Console.WriteLine("✅ Celestial Bodies - Gas giants, rocky planets, asteroids, nebulae");
+            Console.WriteLine("✅ Deep Customization - Players can modify every block");
+            Console.WriteLine();
+            Console.WriteLine("See SHIP_GENERATION_TEXTURE_GUIDE.md for complete documentation.");
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ Demo error: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Console.ResetColor();
         }
