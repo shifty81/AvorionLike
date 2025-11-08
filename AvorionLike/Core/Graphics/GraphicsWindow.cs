@@ -38,6 +38,7 @@ public class GraphicsWindow : IDisposable
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
     private bool _playerControlMode = false; // Toggle between camera and ship control
+    private bool _shouldClose = false; // Signal to close window and return to main menu
     
     // Mouse state
     private Vector2 _lastMousePos;
@@ -57,6 +58,14 @@ public class GraphicsWindow : IDisposable
     public GraphicsWindow(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
+    }
+    
+    /// <summary>
+    /// Request window to close and return to main menu
+    /// </summary>
+    public void RequestClose()
+    {
+        _shouldClose = true;
     }
     
     /// <summary>
@@ -108,6 +117,9 @@ public class GraphicsWindow : IDisposable
         _customUIRenderer = new CustomUIRenderer(_gl, _window!.Size.X, _window.Size.Y);
         _gameHUD = new GameHUD(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
         _gameMenuSystem = new GameMenuSystem(_gameEngine, _customUIRenderer, _window.Size.X, _window.Size.Y);
+        
+        // Set callback for returning to main menu
+        _gameMenuSystem.SetReturnToMainMenuCallback(() => RequestClose());
         
         // Initialize ImGui for DEBUG/CONSOLE ONLY using Silk.NET extension
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
@@ -164,6 +176,13 @@ public class GraphicsWindow : IDisposable
 
         if (_camera == null || _imguiController == null || _playerControlSystem == null || 
             _inputContext == null || _gameHUD == null || _gameMenuSystem == null) return;
+
+        // Check if window should close (return to main menu)
+        if (_shouldClose && _window != null)
+        {
+            _window.Close();
+            return;
+        }
 
         // Update ImGui (needed for GameHUD text rendering and debug UI)
         _imguiController.Update(_deltaTime);

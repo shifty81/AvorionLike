@@ -10,6 +10,7 @@ namespace AvorionLike.Core.UI;
 public class MenuSystem
 {
     private readonly GameEngine _gameEngine;
+    private Action? _onReturnToMainMenu; // Callback for returning to main menu
     private MenuState _currentMenu = MenuState.None;
     private bool _showMainMenu = false;
     private bool _showPauseMenu = false;
@@ -48,6 +49,14 @@ public class MenuSystem
     {
         _gameEngine = gameEngine;
         LoadSettingsFromConfig();
+    }
+    
+    /// <summary>
+    /// Set callback for when user wants to return to main menu
+    /// </summary>
+    public void SetReturnToMainMenuCallback(Action callback)
+    {
+        _onReturnToMainMenu = callback;
     }
     
     /// <summary>
@@ -267,9 +276,16 @@ public class MenuSystem
             ImGui.SetCursorPosX(20);
             if (ImGui.Button("Main Menu", buttonSize))
             {
+                Console.WriteLine("Returning to main menu - closing game window");
+                // Close all menus
                 _showPauseMenu = false;
-                _showMainMenu = true;
-                _currentMenu = MenuState.MainMenu;
+                _showMainMenu = false;
+                _showSettingsMenu = false;
+                _showSaveDialog = false;
+                _showLoadDialog = false;
+                _currentMenu = MenuState.None;
+                // Signal to close the window and return to console menu
+                _onReturnToMainMenu?.Invoke();
             }
             
             ImGui.PopStyleVar();
