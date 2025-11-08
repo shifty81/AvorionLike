@@ -425,7 +425,7 @@ public class GameHUD
         _renderer.DrawCircle(radarCenter, radarRadius * 0.33f, new Vector4(radarGridColor.X, radarGridColor.Y, radarGridColor.Z, radarGridColor.W * 0.5f), 24, lineThickness * 0.6f);
         
         // Animated sweep line effect
-        float sweepAngle = (_renderer as dynamic)?._animationTime ?? 0f;
+        float sweepAngle = _renderer.AnimationTime;
         float sweepX = MathF.Cos(sweepAngle) * radarRadius;
         float sweepY = MathF.Sin(sweepAngle) * radarRadius;
         Vector4 sweepColor = new Vector4(0.0f, 1.0f, 0.8f, 0.3f);
