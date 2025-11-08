@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Marked unused configuration fields with pragma suppressions for future feature development
 - Application header now displays version information dynamically
 
+### Fixed
+- Fixed 3 null reference warnings in SystemVerification.cs by adding null-forgiving operators after Assert null checks (2025-11-08)
+
 ## [0.9.0] - 2025-11-05
 
 ### Added - Player UI & Full Gameplay Experience
