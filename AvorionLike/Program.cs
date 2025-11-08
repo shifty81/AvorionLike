@@ -298,35 +298,10 @@ class Program
         Console.WriteLine("  Gyros: Avorion (Purple with Strong Glow)");
         Console.WriteLine("\n  Each block type has distinct colors to verify rendering!");
         
-        // Create some nearby asteroids for mining
-        Console.WriteLine("\nPopulating nearby space...");
-        var random = new Random();
-        for (int i = 0; i < 5; i++)
-        {
-            var asteroid = _gameEngine.EntityManager.CreateEntity($"Asteroid {i + 1}");
-            
-            var asteroidVoxel = new VoxelStructureComponent();
-            asteroidVoxel.AddBlock(new VoxelBlock(
-                new Vector3(0, 0, 0),
-                new Vector3(5, 5, 5),
-                "Iron",
-                BlockType.Armor
-            ));
-            _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
-            
-            var asteroidPhysics = new PhysicsComponent
-            {
-                Position = new Vector3(
-                    random.Next(-100, 100),
-                    random.Next(-100, 100),
-                    random.Next(-100, 100)
-                ),
-                Mass = 10000f
-            };
-            _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidPhysics);
-            
-            Console.WriteLine($"  ✓ Created {asteroid.Name} at position ({asteroidPhysics.Position.X:F0}, {asteroidPhysics.Position.Y:F0}, {asteroidPhysics.Position.Z:F0})");
-        }
+        // Populate the game world with a living, breathing universe
+        Console.WriteLine("\n=== Populating Game World ===");
+        var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
+        worldPopulator.PopulateStarterArea(physicsComponent.Position, radius: 800f);
         
         Console.WriteLine("\n=== Launching Full Game Experience ===");
         Console.WriteLine("Opening 3D window with Player UI...");
