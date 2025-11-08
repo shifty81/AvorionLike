@@ -33,15 +33,10 @@ public class GreedyMeshBuilder
     
     /// <summary>
     /// Generate mesh with greedy meshing algorithm (combines adjacent faces)
-    /// NOTE: Full greedy meshing not yet implemented, falls back to standard meshing with face culling
+    /// Significantly reduces face count by merging adjacent faces of the same material
     /// </summary>
     public static OptimizedMesh BuildGreedyMesh(IEnumerable<VoxelBlock> blocks)
     {
-        // TODO: Implement full greedy meshing algorithm
-        // For now, use standard face culling which already provides significant optimization
-        return BuildMesh(blocks);
-        
-        /* Future greedy meshing implementation would:
         var mesh = new OptimizedMesh();
         var blockList = blocks.Where(b => !b.IsDestroyed).ToList();
         
@@ -51,14 +46,16 @@ public class GreedyMeshBuilder
         // Build voxel grid for greedy meshing
         var grid = BuildVoxelGrid(blockList);
         
-        // Process each axis
+        // Process each axis (X, Y, Z) and both directions (positive and negative)
         for (int axis = 0; axis < 3; axis++)
         {
-            GreedyMeshAxis(grid, axis, mesh);
+            for (int direction = -1; direction <= 1; direction += 2)
+            {
+                GreedyMeshAxis(grid, axis, direction, mesh);
+            }
         }
         
         return mesh;
-        */
     }
     
     /// <summary>
@@ -239,17 +236,331 @@ public class GreedyMeshBuilder
     /// <summary>
     /// Perform greedy meshing on one axis
     /// </summary>
-    private static void GreedyMeshAxis(VoxelGrid grid, int axis, OptimizedMesh mesh)
+    private static void GreedyMeshAxis(VoxelGrid grid, int axis, int direction, OptimizedMesh mesh)
     {
-        // Simplified greedy meshing - for now, fall back to standard meshing
-        // Full greedy meshing implementation can be added in future
-        // This avoids returning empty meshes when greedy meshing is requested
+        // Create a 3D voxel array for easier access
+        var voxelArray = CreateVoxelArray(grid);
+        if (voxelArray == null)
+            return;
         
-        // TODO: Implement proper greedy meshing algorithm that:
-        // 1. Slices voxel grid along each axis
-        // 2. Finds rectangular regions of same material
-        // 3. Merges adjacent faces into larger quads
-        // 4. Significantly reduces face count
+        int width = voxelArray.GetLength(0);
+        int height = voxelArray.GetLength(1);
+        int depth = voxelArray.GetLength(2);
+        
+        // Determine dimensions based on axis
+        int uSize, vSize, wSize;
+        
+        switch (axis)
+        {
+            case 0: // X axis
+                uSize = height; vSize = depth; wSize = width;
+                break;
+            case 1: // Y axis
+                uSize = width; vSize = depth; wSize = height;
+                break;
+            default: // Z axis
+                uSize = width; vSize = height; wSize = depth;
+                break;
+        }
+        
+        // Process each slice along the axis
+        for (int d = 0; d < wSize; d++)
+        {
+            // Create a mask for this slice
+            var mask = new VoxelFace?[uSize, vSize];
+            
+            // Fill the mask by checking which faces are exposed
+            for (int i = 0; i < uSize; i++)
+            {
+                for (int j = 0; j < vSize; j++)
+                {
+                    var coords = GetCoords(axis, i, j, d);
+                    var block = GetVoxel(voxelArray, coords[0], coords[1], coords[2]);
+                    
+                    // Check if there's a face here (block exists and neighbor doesn't exist in direction)
+                    if (block != null)
+                    {
+                        var neighborCoords = GetCoords(axis, i, j, d + direction);
+                        var neighbor = GetVoxel(voxelArray, neighborCoords[0], neighborCoords[1], neighborCoords[2]);
+                        
+                        if (neighbor == null)
+                        {
+                            mask[i, j] = new VoxelFace
+                            {
+                                Block = block,
+                                Color = block.ColorRGB,
+                                MaterialType = block.MaterialType
+                            };
+                        }
+                    }
+                }
+            }
+            
+            // Generate mesh from mask using greedy algorithm
+            for (int i = 0; i < uSize; i++)
+            {
+                for (int j = 0; j < vSize; j++)
+                {
+                    if (mask[i, j] == null)
+                        continue;
+                    
+                    var face = mask[i, j]!.Value;
+                    
+                    // Find width of this quad
+                    int width_quad = 1;
+                    while (i + width_quad < uSize && 
+                           mask[i + width_quad, j] != null &&
+                           CompareFaces(mask[i + width_quad, j]!.Value, face))
+                    {
+                        width_quad++;
+                    }
+                    
+                    // Find height of this quad
+                    int height_quad = 1;
+                    bool canExtend = true;
+                    while (j + height_quad < vSize && canExtend)
+                    {
+                        // Check entire row
+                        for (int k = i; k < i + width_quad; k++)
+                        {
+                            if (mask[k, j + height_quad] == null ||
+                                !CompareFaces(mask[k, j + height_quad]!.Value, face))
+                            {
+                                canExtend = false;
+                                break;
+                            }
+                        }
+                        if (canExtend)
+                            height_quad++;
+                    }
+                    
+                    // Add merged quad to mesh
+                    AddGreedyQuad(mesh, axis, direction, d, i, j, width_quad, height_quad, face, grid);
+                    
+                    // Clear processed cells in mask
+                    for (int widthIdx = i; widthIdx < i + width_quad; widthIdx++)
+                    {
+                        for (int heightIdx = j; heightIdx < j + height_quad; heightIdx++)
+                        {
+                            mask[widthIdx, heightIdx] = null;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Create a 3D array representation of the voxel grid for easier indexing
+    /// </summary>
+    private static VoxelBlock?[,,]? CreateVoxelArray(VoxelGrid grid)
+    {
+        if (grid.Blocks.Count == 0)
+            return null;
+        
+        // Find the bounds in voxel units (assuming unit size blocks for simplicity)
+        var minX = (int)Math.Floor(grid.Min.X);
+        var minY = (int)Math.Floor(grid.Min.Y);
+        var minZ = (int)Math.Floor(grid.Min.Z);
+        var maxX = (int)Math.Ceiling(grid.Max.X);
+        var maxY = (int)Math.Ceiling(grid.Max.Y);
+        var maxZ = (int)Math.Ceiling(grid.Max.Z);
+        
+        int width = maxX - minX + 1;
+        int height = maxY - minY + 1;
+        int depth = maxZ - minZ + 1;
+        
+        // Prevent excessive memory allocation
+        if (width > 1000 || height > 1000 || depth > 1000)
+            return null;
+        
+        var array = new VoxelBlock?[width, height, depth];
+        
+        // Fill array with blocks
+        foreach (var block in grid.Blocks)
+        {
+            int x = (int)Math.Round(block.Position.X) - minX;
+            int y = (int)Math.Round(block.Position.Y) - minY;
+            int z = (int)Math.Round(block.Position.Z) - minZ;
+            
+            if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth)
+            {
+                array[x, y, z] = block;
+            }
+        }
+        
+        return array;
+    }
+    
+    /// <summary>
+    /// Get voxel from array with bounds checking
+    /// </summary>
+    private static VoxelBlock? GetVoxel(VoxelBlock?[,,] array, int x, int y, int z)
+    {
+        if (x < 0 || x >= array.GetLength(0) ||
+            y < 0 || y >= array.GetLength(1) ||
+            z < 0 || z >= array.GetLength(2))
+        {
+            return null;
+        }
+        
+        return array[x, y, z];
+    }
+    
+    /// <summary>
+    /// Get coordinates for a given axis, u, v, w indexing
+    /// </summary>
+    private static int[] GetCoords(int axis, int u, int v, int w)
+    {
+        return axis switch
+        {
+            0 => new[] { w, u, v }, // X axis: w=x, u=y, v=z
+            1 => new[] { u, w, v }, // Y axis: u=x, w=y, v=z
+            _ => new[] { u, v, w }  // Z axis: u=x, v=y, w=z
+        };
+    }
+    
+    /// <summary>
+    /// Compare two voxel faces for mergeability
+    /// </summary>
+    private static bool CompareFaces(VoxelFace a, VoxelFace b)
+    {
+        return a.Color == b.Color && a.MaterialType == b.MaterialType;
+    }
+    
+    /// <summary>
+    /// Add a greedy meshed quad to the mesh
+    /// </summary>
+    private static void AddGreedyQuad(
+        OptimizedMesh mesh,
+        int axis,
+        int direction,
+        int depth,
+        int u,
+        int v,
+        int width,
+        int height,
+        VoxelFace face,
+        VoxelGrid grid)
+    {
+        // Calculate actual world positions
+        float minX = grid.Min.X;
+        float minY = grid.Min.Y;
+        float minZ = grid.Min.Z;
+        
+        // Convert grid coordinates to world coordinates
+        Vector3[] vertices = new Vector3[4];
+        Vector3 normal;
+        
+        switch (axis)
+        {
+            case 0: // X axis
+                {
+                    float x = minX + depth + (direction > 0 ? 1 : 0);
+                    float y1 = minY + u;
+                    float y2 = minY + u + height;
+                    float z1 = minZ + v;
+                    float z2 = minZ + v + width;
+                    
+                    if (direction > 0)
+                    {
+                        vertices[0] = new Vector3(x, y1, z1);
+                        vertices[1] = new Vector3(x, y2, z1);
+                        vertices[2] = new Vector3(x, y2, z2);
+                        vertices[3] = new Vector3(x, y1, z2);
+                        normal = new Vector3(1, 0, 0);
+                    }
+                    else
+                    {
+                        vertices[0] = new Vector3(x, y1, z2);
+                        vertices[1] = new Vector3(x, y2, z2);
+                        vertices[2] = new Vector3(x, y2, z1);
+                        vertices[3] = new Vector3(x, y1, z1);
+                        normal = new Vector3(-1, 0, 0);
+                    }
+                    break;
+                }
+            case 1: // Y axis
+                {
+                    float y = minY + depth + (direction > 0 ? 1 : 0);
+                    float x1 = minX + u;
+                    float x2 = minX + u + width;
+                    float z1 = minZ + v;
+                    float z2 = minZ + v + height;
+                    
+                    if (direction > 0)
+                    {
+                        vertices[0] = new Vector3(x1, y, z1);
+                        vertices[1] = new Vector3(x1, y, z2);
+                        vertices[2] = new Vector3(x2, y, z2);
+                        vertices[3] = new Vector3(x2, y, z1);
+                        normal = new Vector3(0, 1, 0);
+                    }
+                    else
+                    {
+                        vertices[0] = new Vector3(x1, y, z2);
+                        vertices[1] = new Vector3(x1, y, z1);
+                        vertices[2] = new Vector3(x2, y, z1);
+                        vertices[3] = new Vector3(x2, y, z2);
+                        normal = new Vector3(0, -1, 0);
+                    }
+                    break;
+                }
+            default: // Z axis
+                {
+                    float z = minZ + depth + (direction > 0 ? 1 : 0);
+                    float x1 = minX + u;
+                    float x2 = minX + u + width;
+                    float y1 = minY + v;
+                    float y2 = minY + v + height;
+                    
+                    if (direction > 0)
+                    {
+                        vertices[0] = new Vector3(x1, y1, z);
+                        vertices[1] = new Vector3(x2, y1, z);
+                        vertices[2] = new Vector3(x2, y2, z);
+                        vertices[3] = new Vector3(x1, y2, z);
+                        normal = new Vector3(0, 0, 1);
+                    }
+                    else
+                    {
+                        vertices[0] = new Vector3(x2, y1, z);
+                        vertices[1] = new Vector3(x1, y1, z);
+                        vertices[2] = new Vector3(x1, y2, z);
+                        vertices[3] = new Vector3(x2, y2, z);
+                        normal = new Vector3(0, 0, -1);
+                    }
+                    break;
+                }
+        }
+        
+        // Add vertices to mesh
+        int vertexStart = mesh.Vertices.Count;
+        foreach (var vertex in vertices)
+        {
+            mesh.Vertices.Add(vertex);
+            mesh.Normals.Add(normal);
+            mesh.Colors.Add(face.Color);
+        }
+        
+        // Add indices (two triangles)
+        mesh.Indices.Add(vertexStart + 0);
+        mesh.Indices.Add(vertexStart + 1);
+        mesh.Indices.Add(vertexStart + 2);
+        
+        mesh.Indices.Add(vertexStart + 0);
+        mesh.Indices.Add(vertexStart + 2);
+        mesh.Indices.Add(vertexStart + 3);
+    }
+    
+    /// <summary>
+    /// Structure representing a voxel face
+    /// </summary>
+    private struct VoxelFace
+    {
+        public VoxelBlock Block;
+        public uint Color;
+        public string MaterialType;
     }
 }
 
