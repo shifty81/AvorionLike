@@ -28,6 +28,8 @@ public class CustomUIRenderer : IDisposable
     private float _screenHeight;
     private float _animationTime = 0f;
     
+    public float AnimationTime => _animationTime;
+    
     public CustomUIRenderer(GL gl, float screenWidth, float screenHeight)
     {
         _gl = gl;
