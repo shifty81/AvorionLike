@@ -90,7 +90,7 @@ public class SystemVerification
         {
             var entity = _engine.EntityManager.CreateEntity("Test Entity");
             Assert(entity != null, "Entity should not be null");
-            Assert(!string.IsNullOrEmpty(entity.Name), "Entity should have a name");
+            Assert(!string.IsNullOrEmpty(entity!.Name), "Entity should have a name"); // entity is verified non-null above
             Assert(entity.Id != Guid.Empty, "Entity should have a valid ID");
             _engine.EntityManager.DestroyEntity(entity.Id);
         });
@@ -103,7 +103,7 @@ public class SystemVerification
             
             var retrieved = _engine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
             Assert(retrieved != null, "Component should be retrievable");
-            Assert(retrieved.Mass == 100f, "Component data should be preserved");
+            Assert(retrieved!.Mass == 100f, "Component data should be preserved"); // retrieved is verified non-null above
             _engine.EntityManager.DestroyEntity(entity.Id);
         });
 
@@ -126,7 +126,7 @@ public class SystemVerification
         {
             var config = Configuration.ConfigurationManager.Instance.Config;
             Assert(config != null, "Configuration should be loaded");
-            Assert(config.Graphics != null, "Graphics config should exist");
+            Assert(config!.Graphics != null, "Graphics config should exist"); // config is verified non-null above
             Assert(config.Audio != null, "Audio config should exist");
             Assert(config.Gameplay != null, "Gameplay config should exist");
         });
