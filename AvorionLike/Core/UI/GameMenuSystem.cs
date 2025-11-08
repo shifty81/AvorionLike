@@ -17,6 +17,7 @@ public class GameMenuSystem
     private readonly CustomUIRenderer _renderer;
     private float _screenWidth;
     private float _screenHeight;
+    private Action? _onReturnToMainMenu; // Callback for returning to main menu
     
     private bool _isPauseMenuOpen = false;
     private bool _isSettingsMenuOpen = false;
@@ -54,6 +55,14 @@ public class GameMenuSystem
         _renderer = renderer;
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
+    }
+    
+    /// <summary>
+    /// Set callback for when user wants to return to main menu
+    /// </summary>
+    public void SetReturnToMainMenuCallback(Action callback)
+    {
+        _onReturnToMainMenu = callback;
     }
     
     public void UpdateScreenSize(float width, float height)
@@ -494,8 +503,14 @@ public class GameMenuSystem
                 _confirmAction = () => 
                 {
                     Console.WriteLine("Returning to main menu - closing game window");
-                    // Signal to close the game window
-                    Environment.Exit(0);
+                    // Close all menus first
+                    _isConfirmDialogOpen = false;
+                    _isPauseMenuOpen = false;
+                    _isSettingsMenuOpen = false;
+                    _isSaveDialogOpen = false;
+                    _isLoadDialogOpen = false;
+                    // Signal to close the game window via callback
+                    _onReturnToMainMenu?.Invoke();
                 };
                 _isConfirmDialogOpen = true;
                 _isPauseMenuOpen = false;
