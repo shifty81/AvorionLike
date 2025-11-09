@@ -21,6 +21,12 @@ public class PhysicsComponent : IComponent, ISerializable
     public Vector3 AngularVelocity { get; set; }
     public Vector3 AngularAcceleration { get; set; }
     
+    // Interpolation for smooth rendering (not persisted)
+    public Vector3 PreviousPosition { get; set; }
+    public Vector3 PreviousRotation { get; set; }
+    public Vector3 InterpolatedPosition { get; set; }
+    public Vector3 InterpolatedRotation { get; set; }
+    
     // Physical properties
     public float Mass { get; set; } = 1000f;
     public float MomentOfInertia { get; set; } = 1000f; // For rotational motion

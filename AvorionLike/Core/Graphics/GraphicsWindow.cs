@@ -256,11 +256,12 @@ public class GraphicsWindow : IDisposable
                 // Ship control mode
                 _playerControlSystem.Update(_deltaTime);
                 
-                // Follow player ship with smooth chase camera
+                // Follow player ship with smooth chase camera using interpolated position
                 var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_playerControlSystem.ControlledShipId.Value);
                 if (physics != null)
                 {
-                    _camera.FollowTarget(physics.Position, physics.Velocity, _deltaTime);
+                    // Use interpolated position for smoother camera follow
+                    _camera.FollowTarget(physics.InterpolatedPosition, physics.Velocity, _deltaTime);
                 }
             }
             else
@@ -310,6 +311,11 @@ public class GraphicsWindow : IDisposable
         // Calculate aspect ratio from window size
         float aspectRatio = (float)_window.Size.X / _window.Size.Y;
 
+        // Interpolate physics for smooth rendering (use deltaTime as alpha)
+        // This provides smooth motion between physics updates
+        float alpha = Math.Clamp(_deltaTime * 60f, 0f, 1f); // Assume 60 FPS target
+        _gameEngine.PhysicsSystem.InterpolatePhysics(alpha);
+
         // Render starfield background first (without depth write)
         _starfieldRenderer.Render(_camera, aspectRatio);
 
@@ -320,12 +326,12 @@ public class GraphicsWindow : IDisposable
             var voxelComponent = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(entity.Id);
             if (voxelComponent != null)
             {
-                // Get entity position from physics component if available
+                // Get interpolated position from physics component for smooth rendering
                 Vector3 position = Vector3.Zero;
                 var physicsComponent = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
                 if (physicsComponent != null)
                 {
-                    position = physicsComponent.Position;
+                    position = physicsComponent.InterpolatedPosition;
                 }
 
                 _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
