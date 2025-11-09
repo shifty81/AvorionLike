@@ -517,9 +517,9 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
-    /// Find the nearest hull block to a target position
+    /// Find the nearest hull block to a target position, optionally with an offset
     /// </summary>
-    private VoxelBlock? FindNearestHullBlock(GeneratedShip ship, Vector3 targetPosition)
+    private VoxelBlock? FindNearestHullBlock(GeneratedShip ship, Vector3 targetPosition, bool findAdjacent = false)
     {
         var hullBlocks = ship.Structure.Blocks.Where(b => 
             b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor).ToList();
@@ -543,16 +543,93 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
-    /// Snap a position to the nearest hull block, ensuring connectivity
+    /// Find an adjacent position to a hull block for placing components
+    /// Ensures the new block will be touching or overlapping the hull block
     /// </summary>
-    private Vector3 SnapToNearestHull(GeneratedShip ship, Vector3 targetPosition)
+    private Vector3 FindAdjacentPosition(GeneratedShip ship, VoxelBlock hullBlock, Vector3 preferredDirection, Vector3 componentSize)
+    {
+        // Calculate offsets that will make blocks touch (considering block sizes)
+        // For a 2x2x2 hull block and 3x3x3 component, they need to be 2.5 units apart (touching edges)
+        float hullHalfSize = hullBlock.Size.X / 2; // Assuming cubic blocks
+        float componentHalfSize = componentSize.X / 2;
+        float touchingDistance = hullHalfSize + componentHalfSize;
+        
+        Vector3[] directions = new[]
+        {
+            new Vector3(touchingDistance, 0, 0),
+            new Vector3(-touchingDistance, 0, 0),
+            new Vector3(0, touchingDistance, 0),
+            new Vector3(0, -touchingDistance, 0),
+            new Vector3(0, 0, touchingDistance),
+            new Vector3(0, 0, -touchingDistance)
+        };
+        
+        // Sort directions by similarity to preferred direction
+        var sortedDirections = directions.OrderByDescending(dir => 
+        {
+            if (preferredDirection == Vector3.Zero) return 0;
+            return Vector3.Dot(Vector3.Normalize(dir), Vector3.Normalize(preferredDirection));
+        });
+        
+        foreach (var direction in sortedDirections)
+        {
+            Vector3 candidatePos = hullBlock.Position + direction;
+            
+            // Check if this position is already occupied (within 1 unit)
+            bool occupied = ship.Structure.Blocks.Any(b => 
+                Vector3.Distance(b.Position, candidatePos) < 1.0f);
+            
+            if (!occupied)
+            {
+                return candidatePos;
+            }
+        }
+        
+        // Fallback: try diagonal positions
+        Vector3[] diagonals = new[]
+        {
+            Vector3.Normalize(new Vector3(touchingDistance, touchingDistance, 0)) * touchingDistance,
+            Vector3.Normalize(new Vector3(touchingDistance, -touchingDistance, 0)) * touchingDistance,
+            Vector3.Normalize(new Vector3(-touchingDistance, touchingDistance, 0)) * touchingDistance,
+            Vector3.Normalize(new Vector3(-touchingDistance, -touchingDistance, 0)) * touchingDistance
+        };
+        
+        foreach (var diagonal in diagonals)
+        {
+            Vector3 candidatePos = hullBlock.Position + diagonal;
+            bool occupied = ship.Structure.Blocks.Any(b => 
+                Vector3.Distance(b.Position, candidatePos) < 1.0f);
+            
+            if (!occupied)
+            {
+                return candidatePos;
+            }
+        }
+        
+        // Last resort: place on the hull block itself (will overlap but be connected)
+        return hullBlock.Position;
+    }
+    
+    /// <summary>
+    /// Snap a position to near the hull, finding an adjacent free spot that ensures connectivity
+    /// </summary>
+    private Vector3 SnapToNearestHull(GeneratedShip ship, Vector3 targetPosition, Vector3 preferredDirection, Vector3 componentSize)
     {
         var nearest = FindNearestHullBlock(ship, targetPosition);
         if (nearest == null) return targetPosition;
         
-        // Return a position adjacent to the nearest hull block
-        // This ensures the component will be connected
-        return nearest.Position;
+        // If no preferred direction, use direction from hull to target
+        if (preferredDirection == default || preferredDirection == Vector3.Zero)
+        {
+            preferredDirection = targetPosition - nearest.Position;
+            if (preferredDirection.Length() < 0.1f)
+            {
+                preferredDirection = new Vector3(0, 0, 1); // Default forward
+            }
+        }
+        
+        // Find an adjacent position that ensures blocks will be connected
+        return FindAdjacentPosition(ship, nearest, preferredDirection, componentSize);
     }
     
     /// <summary>
@@ -671,6 +748,7 @@ public class ProceduralShipGenerator
     {
         // Place engines at the rear of the ship, ensuring they connect to hull
         float engineZ = -dimensions.Z / 2 + 2; // Near the back
+        Vector3 engineSize = new Vector3(3, 3, 3); // Engines are larger
         
         for (int i = 0; i < count; i++)
         {
@@ -680,12 +758,12 @@ public class ProceduralShipGenerator
             
             Vector3 targetPosition = new Vector3(x, -dimensions.Y / 4, engineZ);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with preference to grow outward (rear direction)
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, 0, -1), engineSize);
             
             var engine = new VoxelBlock(
                 placementPosition,
-                new Vector3(3, 3, 3), // Engines are larger
+                engineSize,
                 config.Material,
                 BlockType.Engine
             );
@@ -696,17 +774,19 @@ public class ProceduralShipGenerator
     private void PlaceGenerators(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
     {
         // Place generators in the core (center of ship, protected), ensuring connectivity
+        Vector3 generatorSize = new Vector3(3, 3, 3);
+        
         for (int i = 0; i < count; i++)
         {
             float z = -dimensions.Z / 4 + (dimensions.Z / 2) / count * i;
             Vector3 targetPosition = new Vector3(0, 0, z);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // For generators, prefer internal placement (no strong directional preference)
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, Vector3.Zero, generatorSize);
             
             var generator = new VoxelBlock(
                 placementPosition,
-                new Vector3(3, 3, 3),
+                generatorSize,
                 config.Material,
                 BlockType.Generator
             );
@@ -717,19 +797,22 @@ public class ProceduralShipGenerator
     private void PlaceShields(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
     {
         // Distribute shield generators throughout the ship, ensuring connectivity
+        Vector3 shieldSize = new Vector3(3, 3, 3);
+        
         for (int i = 0; i < count; i++)
         {
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / count) * i;
             float y = i % 2 == 0 ? dimensions.Y / 4 : -dimensions.Y / 4;
             
             Vector3 targetPosition = new Vector3(0, y, z);
+            Vector3 preferredDirection = new Vector3(0, y > 0 ? 1 : -1, 0);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with vertical preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, preferredDirection, shieldSize);
             
             var shield = new VoxelBlock(
                 placementPosition,
-                new Vector3(3, 3, 3),
+                shieldSize,
                 config.Material,
                 BlockType.ShieldGenerator
             );
@@ -741,6 +824,7 @@ public class ProceduralShipGenerator
     {
         // Place thrusters on all sides for omnidirectional movement, ensuring connectivity
         int thrustersPerSide = count / 4;
+        Vector3 thrusterSize = new Vector3(2, 2, 2);
         
         // Top thrusters
         for (int i = 0; i < thrustersPerSide; i++)
@@ -748,12 +832,12 @@ public class ProceduralShipGenerator
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
             Vector3 targetPosition = new Vector3(0, dimensions.Y / 2 - 2, z);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with upward preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, 1, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                thrusterSize,
                 config.Material,
                 BlockType.Thruster
             );
@@ -766,12 +850,12 @@ public class ProceduralShipGenerator
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
             Vector3 targetPosition = new Vector3(0, -dimensions.Y / 2, z);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with downward preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, -1, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                thrusterSize,
                 config.Material,
                 BlockType.Thruster
             );
@@ -784,12 +868,12 @@ public class ProceduralShipGenerator
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
             Vector3 targetPosition = new Vector3(-dimensions.X / 2, 0, z);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with left preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(-1, 0, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                thrusterSize,
                 config.Material,
                 BlockType.Thruster
             );
@@ -802,12 +886,12 @@ public class ProceduralShipGenerator
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
             Vector3 targetPosition = new Vector3(dimensions.X / 2 - 2, 0, z);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with right preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(1, 0, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                thrusterSize,
                 config.Material,
                 BlockType.Thruster
             );
@@ -818,19 +902,22 @@ public class ProceduralShipGenerator
     private void PlaceGyros(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
     {
         // Place gyro arrays for rotation control, ensuring connectivity
+        Vector3 gyroSize = new Vector3(2, 2, 2);
+        
         for (int i = 0; i < count; i++)
         {
             float z = -dimensions.Z / 4 + (dimensions.Z / 2 / count) * i;
             float x = i % 2 == 0 ? dimensions.X / 4 : -dimensions.X / 4;
             
             Vector3 targetPosition = new Vector3(x, 0, z);
+            Vector3 preferredDirection = new Vector3(x > 0 ? 1 : -1, 0, 0);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with horizontal preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, preferredDirection, gyroSize);
             
             var gyro = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                gyroSize,
                 config.Material,
                 BlockType.GyroArray
             );
@@ -844,6 +931,7 @@ public class ProceduralShipGenerator
     private void PlaceWeaponMounts(GeneratedShip ship, ShipGenerationConfig config)
     {
         var dimensions = GetShipDimensions(config.Size);
+        Vector3 turretSize = new Vector3(2, 2, 2);
         
         int weaponCount = config.Role switch
         {
@@ -856,7 +944,7 @@ public class ProceduralShipGenerator
             _ => config.MinimumWeaponMounts
         };
         
-        weaponCount = (int)(weaponCount * config.Style.WeaponDensity);
+        weaponCount = Math.Max(1, (int)(weaponCount * config.Style.WeaponDensity));
         
         // Place weapons around the hull, snapping to hull blocks
         for (int i = 0; i < weaponCount; i++)
@@ -870,13 +958,16 @@ public class ProceduralShipGenerator
             float z = (float)(_random.NextDouble() * dimensions.Z * 0.66f - dimensions.Z / 3);
             
             Vector3 targetPosition = new Vector3(x, y, z);
+            Vector3 preferredDirection = new Vector3(x, y, 0).Length() > 0.1f 
+                ? Vector3.Normalize(new Vector3(x, y, 0)) 
+                : new Vector3(1, 0, 0);
             
-            // Snap to nearest hull to ensure connectivity
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            // Snap to nearest hull with outward preference
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, preferredDirection, turretSize);
             
             var turret = new VoxelBlock(
                 placementPosition,
-                new Vector3(2, 2, 2),
+                turretSize,
                 config.Material,
                 BlockType.TurretMount
             );
@@ -894,12 +985,13 @@ public class ProceduralShipGenerator
         // Add hyperdrive if required
         if (config.RequireHyperdrive)
         {
+            Vector3 hyperdriveSize = new Vector3(4, 4, 4); // Hyperdrive is large
             Vector3 targetPosition = new Vector3(0, 0, dimensions.Z / 3);
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, 0, 1), hyperdriveSize);
             
             var hyperdrive = new VoxelBlock(
                 placementPosition,
-                new Vector3(4, 4, 4), // Hyperdrive is large
+                hyperdriveSize,
                 config.Material,
                 BlockType.HyperdriveCore
             );
@@ -909,6 +1001,8 @@ public class ProceduralShipGenerator
         // Add cargo based on role
         if (config.RequireCargo)
         {
+            Vector3 cargoSize = new Vector3(3, 3, 3);
+            
             int cargoCount = config.Role switch
             {
                 ShipRole.Trading => (int)config.Size * 3,
@@ -924,11 +1018,11 @@ public class ProceduralShipGenerator
                 float y = -dimensions.Y / 3;
                 
                 Vector3 targetPosition = new Vector3(0, y, z);
-                Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+                Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, -1, 0), cargoSize);
                 
                 var cargo = new VoxelBlock(
                     placementPosition,
-                    new Vector3(3, 3, 3),
+                    cargoSize,
                     config.Material,
                     BlockType.Cargo
                 );
@@ -939,12 +1033,13 @@ public class ProceduralShipGenerator
         // Add crew quarters for larger ships
         if (config.Size >= ShipSize.Frigate)
         {
+            Vector3 quartersSize = new Vector3(3, 3, 3);
             Vector3 targetPosition = new Vector3(0, dimensions.Y / 3, 0);
-            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition);
+            Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, 1, 0), quartersSize);
             
             var quarters = new VoxelBlock(
                 placementPosition,
-                new Vector3(3, 3, 3),
+                quartersSize,
                 config.Material,
                 BlockType.CrewQuarters
             );
@@ -952,12 +1047,13 @@ public class ProceduralShipGenerator
         }
         
         // Add pod docking for player
+        Vector3 podSize = new Vector3(2, 2, 2);
         Vector3 podTargetPosition = new Vector3(0, -dimensions.Y / 3, dimensions.Z / 3);
-        Vector3 podPlacementPosition = SnapToNearestHull(ship, podTargetPosition);
+        Vector3 podPlacementPosition = SnapToNearestHull(ship, podTargetPosition, new Vector3(0, -1, 1), podSize);
         
         var podDock = new VoxelBlock(
             podPlacementPosition,
-            new Vector3(2, 2, 2),
+            podSize,
             config.Material,
             BlockType.PodDocking
         );
