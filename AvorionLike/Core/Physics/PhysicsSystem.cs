@@ -24,19 +24,25 @@ public class PhysicsSystem : SystemBase
         {
             if (physics.IsStatic) continue;
 
+            // Store previous state for interpolation
+            physics.PreviousPosition = physics.Position;
+            physics.PreviousRotation = physics.Rotation;
+
             // Calculate acceleration from forces (F = ma, a = F/m)
             physics.Acceleration = physics.AppliedForce / physics.Mass;
             
             // Calculate angular acceleration from torque (τ = Iα, α = τ/I)
             physics.AngularAcceleration = physics.AppliedTorque / physics.MomentOfInertia;
 
-            // Update velocities
+            // Update velocities with smoother damping
             physics.Velocity += physics.Acceleration * deltaTime;
             physics.AngularVelocity += physics.AngularAcceleration * deltaTime;
 
-            // Apply drag
-            physics.Velocity *= (1f - physics.Drag * deltaTime);
-            physics.AngularVelocity *= (1f - physics.AngularDrag * deltaTime);
+            // Apply drag with exponential decay for smoother motion
+            float dragFactor = (float)Math.Exp(-physics.Drag * deltaTime);
+            float angularDragFactor = (float)Math.Exp(-physics.AngularDrag * deltaTime);
+            physics.Velocity *= dragFactor;
+            physics.AngularVelocity *= angularDragFactor;
 
             // Clamp velocities to prevent excessive speeds
             if (physics.Velocity.Length() > MaxVelocity)
@@ -48,12 +54,34 @@ public class PhysicsSystem : SystemBase
             physics.Position += physics.Velocity * deltaTime;
             physics.Rotation += physics.AngularVelocity * deltaTime;
 
+            // Initialize interpolated values (will be updated during render)
+            physics.InterpolatedPosition = physics.Position;
+            physics.InterpolatedRotation = physics.Rotation;
+
             // Clear forces for next frame
             physics.ClearForces();
         }
 
         // Simple collision detection
         DetectCollisions(physicsComponents.ToList());
+    }
+    
+    /// <summary>
+    /// Interpolate physics state for smooth rendering between physics updates
+    /// Call this with the interpolation factor (0.0 to 1.0) between physics frames
+    /// </summary>
+    public void InterpolatePhysics(float alpha)
+    {
+        var physicsComponents = _entityManager.GetAllComponents<PhysicsComponent>();
+
+        foreach (var physics in physicsComponents)
+        {
+            if (physics.IsStatic) continue;
+
+            // Linear interpolation between previous and current state
+            physics.InterpolatedPosition = Vector3.Lerp(physics.PreviousPosition, physics.Position, alpha);
+            physics.InterpolatedRotation = Vector3.Lerp(physics.PreviousRotation, physics.Rotation, alpha);
+        }
     }
 
     private void DetectCollisions(List<PhysicsComponent> components)
