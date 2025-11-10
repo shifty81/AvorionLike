@@ -805,9 +805,17 @@ public class ProceduralShipGenerator
         {
             Vector3 candidatePos = hullBlock.Position + direction;
             
-            // Check if this position is already occupied (within 1 unit)
+            // Check if this position is already occupied (considering both positions and sizes)
+            // Blocks should not overlap significantly - allow small overlap for better connectivity
             bool occupied = ship.Structure.Blocks.Any(b => 
-                Vector3.Distance(b.Position, candidatePos) < 1.0f);
+            {
+                // Calculate minimum distance considering block sizes (AABB distance)
+                float dx = Math.Abs(b.Position.X - candidatePos.X);
+                float dy = Math.Abs(b.Position.Y - candidatePos.Y);
+                float dz = Math.Abs(b.Position.Z - candidatePos.Z);
+                float minDist = (b.Size.X + componentSize.X) / 2 * 0.8f;  // 80% to allow slight overlap
+                return dx < minDist && dy < minDist && dz < minDist;
+            });
             
             if (!occupied)
             {
@@ -827,8 +835,17 @@ public class ProceduralShipGenerator
         foreach (var diagonal in diagonals)
         {
             Vector3 candidatePos = hullBlock.Position + diagonal;
+            
+            // Check if this position is already occupied (considering both positions and sizes)
             bool occupied = ship.Structure.Blocks.Any(b => 
-                Vector3.Distance(b.Position, candidatePos) < 1.0f);
+            {
+                // Calculate minimum distance considering block sizes (AABB distance)
+                float dx = Math.Abs(b.Position.X - candidatePos.X);
+                float dy = Math.Abs(b.Position.Y - candidatePos.Y);
+                float dz = Math.Abs(b.Position.Z - candidatePos.Z);
+                float minDist = (b.Size.X + componentSize.X) / 2 * 0.8f;  // 80% to allow slight overlap
+                return dx < minDist && dy < minDist && dz < minDist;
+            });
             
             if (!occupied)
             {
