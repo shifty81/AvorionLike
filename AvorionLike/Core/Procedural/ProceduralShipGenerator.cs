@@ -256,8 +256,8 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - 2, dimensions.Y / 2 - 2, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
         }
         
-        // Horizontal edge beams
-        for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 4)
+        // Horizontal edge beams - reduced spacing for better connectivity
+        for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 3)  // Changed from 4 to 3
         {
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, -dimensions.Y / 2, bodyStart), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 - 2, bodyStart), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
@@ -265,8 +265,8 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 - 2, bodyEnd), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
         }
         
-        // Vertical edge beams
-        for (float y = -dimensions.Y / 2; y < dimensions.Y / 2; y += 4)
+        // Vertical edge beams - reduced spacing for better connectivity
+        for (float y = -dimensions.Y / 2; y < dimensions.Y / 2; y += 3)  // Changed from 4 to 3
         {
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, y, bodyStart), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - 2, y, bodyStart), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
@@ -298,8 +298,8 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Rear engine section - wider base
-        for (float z = -dimensions.Z / 2; z < bodyStart; z += 4)
+        // Rear engine section - wider base with better connectivity
+        for (float z = -dimensions.Z / 2; z < bodyStart; z += 3)  // Changed from 4 to 3
         {
             // Just corners and center for sparse industrial look
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, -dimensions.Y / 2, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
@@ -307,12 +307,12 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, -dimensions.Y / 2, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
         }
         
-        // Industrial side struts - exposed structural elements
+        // Industrial side struts - exposed structural elements with connectivity
         float strutSpacing = (bodyEnd - bodyStart) / 3;
         for (float z = bodyStart; z <= bodyEnd; z += strutSpacing)
         {
-            // Horizontal struts
-            for (float x = -dimensions.X / 2; x <= dimensions.X / 2; x += dimensions.X / 2)
+            // Horizontal struts with connecting blocks
+            for (float x = -dimensions.X / 2; x <= dimensions.X / 2; x += Math.Min(4, dimensions.X / 4))  // Limit spacing
             {
                 ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             }
@@ -352,12 +352,12 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Add aggressive angular wings - swept back design
+        // Add aggressive angular wings - swept back design with better connectivity
         float wingLength = dimensions.Z * 0.4f;
         float wingStart = -dimensions.Z / 4;
         float wingSpan = dimensions.X * 0.5f;
         
-        for (float z = wingStart; z < wingStart + wingLength; z += 4)
+        for (float z = wingStart; z < wingStart + wingLength; z += 3)  // Changed from 4 to 3 for better connectivity
         {
             float wingProgress = (z - wingStart) / wingLength;
             float currentWingSpan = wingSpan * (1.0f - wingProgress * 0.4f);  // Taper toward back
@@ -373,6 +373,12 @@ public class ProceduralShipGenerator
                 new Vector3(-dimensions.X / 2, wingAngle, z),
                 new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             
+            // Add mid-wing connector for structural support
+            float midX = -dimensions.X / 2 - currentWingSpan / 2;
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(midX, wingAngle, z),
+                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            
             // Right wing - symmetric
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(dimensions.X / 2 + currentWingSpan, wingAngle, z),
@@ -382,30 +388,19 @@ public class ProceduralShipGenerator
                 new Vector3(dimensions.X / 2, wingAngle, z),
                 new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             
-            // Wing ribs - structural support every 8 units
-            if ((int)z % 8 == 0)
-            {
-                for (float x = -dimensions.X / 2; x > -dimensions.X / 2 - currentWingSpan; x -= currentWingSpan / 2)
-                {
-                    ship.Structure.AddBlock(new VoxelBlock(
-                        new Vector3(x, wingAngle, z),
-                        new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-                }
-                for (float x = dimensions.X / 2; x < dimensions.X / 2 + currentWingSpan; x += currentWingSpan / 2)
-                {
-                    ship.Structure.AddBlock(new VoxelBlock(
-                        new Vector3(x, wingAngle, z),
-                        new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-                }
-            }
+            // Add mid-wing connector for structural support
+            midX = dimensions.X / 2 + currentWingSpan / 2;
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(midX, wingAngle, z),
+                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
         }
         
-        // Add engine nacelles at rear sides - cylindrical pods
+        // Add engine nacelles at rear sides - cylindrical pods with better connectivity
         float nacelleLength = dimensions.Z * 0.35f;
         float nacelleStart = -dimensions.Z / 2;
         float nacelleOffset = dimensions.X * 0.4f;
         
-        for (float z = nacelleStart; z < nacelleStart + nacelleLength; z += 4)
+        for (float z = nacelleStart; z < nacelleStart + nacelleLength; z += 3)  // Changed from 4 to 3 for better connectivity
         {
             // Small cylindrical nacelles - just 4-6 blocks each in cross shape
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
@@ -415,6 +410,21 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, 2, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, -2, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            
+            // Add connecting struts to main body every 6 units for structural integrity
+            if ((int)z % 6 == 0)
+            {
+                // Left connecting strut
+                for (float x = -dimensions.X / 2; x > -nacelleOffset; x -= 3)
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                }
+                // Right connecting strut
+                for (float x = dimensions.X / 2; x < nacelleOffset; x += 3)
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                }
+            }
         }
     }
     
@@ -508,10 +518,10 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Add industrial struts/supports
+        // Add industrial struts/supports with proper connectivity
         if (dimensions.Z > 20)
         {
-            for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 8)
+            for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 6)  // Changed from 8 to 6 for better connectivity
             {
                 // Add structural support rings
                 for (float angle = 0; angle < 360; angle += 45)
@@ -590,18 +600,24 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Sleek vertical stabilizer fin at rear top
+        // Sleek vertical stabilizer fin at rear top with connectivity
         float finHeight = dimensions.Y * 1.2f;
         float finLength = dimensions.Z * 0.25f;
         float finStart = -dimensions.Z / 2;
         
-        for (float z = finStart; z < finStart + finLength; z += 4)
+        for (float z = finStart; z < finStart + finLength; z += 3)  // Changed from 4 to 3 for better connectivity
         {
             float finProgress = (z - finStart) / finLength;
             float currentFinHeight = finHeight * (1.0f - finProgress * 0.3f);
             
-            // Tall vertical fin
-            for (float y = dimensions.Y / 4; y < dimensions.Y / 4 + currentFinHeight; y += 3)
+            // Tall vertical fin - connect to body first, then extend upward
+            // First ensure connection to main body
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(0, dimensions.Y / 4, z),
+                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            
+            // Then extend upward with closer spacing
+            for (float y = dimensions.Y / 4 + 2; y < dimensions.Y / 4 + currentFinHeight; y += 3)  // Changed from 3 spacing, added connection
             {
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(0, y, z),
@@ -609,12 +625,12 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Small streamlined engine pods on sides
+        // Small streamlined engine pods on sides with better connectivity
         float podLength = dimensions.Z * 0.3f;
         float podStart = -dimensions.Z / 2;
         float podOffset = dimensions.X * 0.35f;
         
-        for (float z = podStart; z < podStart + podLength; z += 5)
+        for (float z = podStart; z < podStart + podLength; z += 3)  // Changed from 5 to 3 for better connectivity
         {
             // Minimal pod structure - just 3 blocks each
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
@@ -622,6 +638,13 @@ public class ProceduralShipGenerator
             
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, -1, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            
+            // Add connecting strut to main spine every 6 units for structural integrity
+            if ((int)z % 6 == 0)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset / 2, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset / 2, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            }
         }
     }
     
