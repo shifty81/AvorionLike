@@ -73,6 +73,7 @@ class Program
             Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures");
             Console.WriteLine("21. Integration Test - Test All Systems Together [NEW! 🧪]");
             Console.WriteLine("22. Movement & Shape Test - Verify Smooth Movement & Ship Shapes [NEW! ✨]");
+            Console.WriteLine("23. Test Ship Connectivity - Verify No Floating Blocks [NEW! 🔧]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -149,6 +150,9 @@ class Program
                     break;
                 case "22":
                     RunMovementAndShapeTest();
+                    break;
+                case "23":
+                    TestShipConnectivity.Run();
                     break;
                 case "0":
                     _running = false;
