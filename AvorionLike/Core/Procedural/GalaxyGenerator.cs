@@ -1,25 +1,31 @@
 using System.Numerics;
+using AvorionLike.Core.Voxel;
+using AvorionLike.Core.ECS;
 
 namespace AvorionLike.Core.Procedural;
 
 /// <summary>
-/// Procedural galaxy generator
+/// Procedural galaxy generator - Enhanced with massive stations and claimable asteroids
 /// </summary>
 public class GalaxyGenerator
 {
     private readonly Random _random;
     private readonly int _seed;
+    private readonly ProceduralStationGenerator _stationGenerator;
+    private readonly MassiveAsteroidGenerator _massiveAsteroidGenerator;
 
     public GalaxyGenerator(int seed = 0)
     {
         _seed = seed == 0 ? Environment.TickCount : seed;
         _random = new Random(_seed);
+        _stationGenerator = new ProceduralStationGenerator(_seed);
+        _massiveAsteroidGenerator = new MassiveAsteroidGenerator(_seed);
     }
 
     /// <summary>
-    /// Generate a galaxy sector
+    /// Generate a galaxy sector with massive stations and rare claimable asteroids
     /// </summary>
-    public GalaxySector GenerateSector(int x, int y, int z)
+    public GalaxySector GenerateSector(int x, int y, int z, EntityManager? entityManager = null)
     {
         // Use sector coordinates as seed for consistent generation
         var sectorSeed = HashCoordinates(x, y, z, _seed);
@@ -44,16 +50,116 @@ public class GalaxyGenerator
                 ResourceType = GetRandomResourceType(sectorRandom)
             });
         }
-
-        // Potentially generate a station
-        if (sectorRandom.NextDouble() < 0.2) // 20% chance
+        
+        // 5% chance for a massive claimable asteroid (only if system hasn't been generated before)
+        if (MassiveAsteroidGenerator.ShouldSpawnMassiveAsteroid(sectorRandom))
         {
+            var massiveAsteroidConfig = new MassiveAsteroidConfig
+            {
+                Type = (MassiveAsteroidType)sectorRandom.Next(Enum.GetValues<MassiveAsteroidType>().Length),
+                Seed = sectorSeed + 1000,
+                MinSize = 2000f,
+                MaxSize = 5000f
+            };
+            
+            var massiveAsteroid = _massiveAsteroidGenerator.GenerateAsteroid(massiveAsteroidConfig);
+            
+            // Position far from center for dramatic effect
+            Vector3 asteroidPosition = new Vector3(
+                (float)(sectorRandom.NextDouble() * 8000 - 4000),
+                (float)(sectorRandom.NextDouble() * 8000 - 4000),
+                (float)(sectorRandom.NextDouble() * 8000 - 4000)
+            );
+            
+            sector.MassiveAsteroid = new MassiveAsteroidData
+            {
+                Position = asteroidPosition,
+                Type = massiveAsteroidConfig.Type,
+                BlockCount = massiveAsteroid.BlockCount,
+                LandingZone = massiveAsteroid.LandingZone,
+                DockingPoints = massiveAsteroid.DockingPoints
+            };
+            
+            // If EntityManager is provided, create the actual entity
+            if (entityManager != null)
+            {
+                var asteroidEntity = entityManager.CreateEntity($"Massive {massiveAsteroidConfig.Type} Asteroid");
+                
+                // Add voxel structure
+                entityManager.AddComponent(asteroidEntity.Id, massiveAsteroid.Structure);
+                
+                // Add hub component for claiming
+                var hubComponent = new AsteroidHubComponent
+                {
+                    EntityId = asteroidEntity.Id,
+                    HubName = $"Unclaimed {massiveAsteroidConfig.Type}"
+                };
+                entityManager.AddComponent(asteroidEntity.Id, hubComponent);
+                
+                sector.MassiveAsteroid.EntityId = asteroidEntity.Id;
+            }
+        }
+
+        // Potentially generate a massive station (20% chance)
+        if (sectorRandom.NextDouble() < 0.2)
+        {
+            string stationType = GetRandomStationType(sectorRandom);
+            
+            // Generate station using new massive station generator
+            var stationConfig = new StationGenerationConfig
+            {
+                Size = (StationSize)sectorRandom.Next(Enum.GetValues<StationSize>().Length),
+                StationType = stationType,
+                Material = GetStationMaterial(sectorRandom),
+                Architecture = (StationArchitecture)sectorRandom.Next(Enum.GetValues<StationArchitecture>().Length),
+                Seed = sectorSeed + 500,
+                IncludeDockingBays = true,
+                MinDockingBays = 4 + sectorRandom.Next(8)
+            };
+            
+            var generatedStation = _stationGenerator.GenerateStation(stationConfig);
+            
             sector.Station = new StationData
             {
                 Position = new Vector3(0, 0, 0),
-                StationType = GetRandomStationType(sectorRandom),
-                Name = GenerateStationName(sectorRandom)
+                StationType = stationType,
+                Name = GenerateStationName(sectorRandom),
+                BlockCount = generatedStation.BlockCount,
+                DockingPoints = generatedStation.DockingPoints,
+                Facilities = generatedStation.Facilities
             };
+            
+            // If EntityManager is provided, create the actual entity
+            if (entityManager != null)
+            {
+                var stationEntity = entityManager.CreateEntity(sector.Station.Name);
+                
+                // Add voxel structure
+                entityManager.AddComponent(stationEntity.Id, generatedStation.Structure);
+                
+                // Add station-specific components based on type
+                if (stationType.ToLower() == "refinery")
+                {
+                    var refineryComponent = new Station.RefineryComponent
+                    {
+                        EntityId = stationEntity.Id,
+                        MaxConcurrentOrders = 10 + sectorRandom.Next(10),
+                        ProcessingSpeedMultiplier = 0.8f + (float)sectorRandom.NextDouble() * 0.4f,  // 0.8-1.2x
+                        MaxStoragePerType = 5000 + sectorRandom.Next(5000)
+                    };
+                    entityManager.AddComponent(stationEntity.Id, refineryComponent);
+                }
+                
+                // Add captain roster for all stations
+                var captainRoster = new Station.StationCaptainRosterComponent
+                {
+                    EntityId = stationEntity.Id
+                };
+                captainRoster.RefreshRoster(stationType, sectorRandom);
+                entityManager.AddComponent(stationEntity.Id, captainRoster);
+                
+                sector.Station.EntityId = stationEntity.Id;
+            }
         }
 
         return sector;
@@ -79,14 +185,20 @@ public class GalaxyGenerator
 
     private string GetRandomStationType(Random random)
     {
-        string[] types = { "Trading", "Military", "Mining", "Shipyard", "Research" };
+        string[] types = { "Trading", "Military", "Mining", "Shipyard", "Research", "Refinery" };
         return types[random.Next(types.Length)];
+    }
+    
+    private string GetStationMaterial(Random random)
+    {
+        string[] materials = { "Titanium", "Naonite", "Trinium" };
+        return materials[random.Next(materials.Length)];
     }
 
     private string GenerateStationName(Random random)
     {
-        string[] prefixes = { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta" };
-        string[] suffixes = { "Outpost", "Station", "Base", "Hub", "Terminal" };
+        string[] prefixes = { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Sigma", "Omega", "Nova", "Stellar" };
+        string[] suffixes = { "Outpost", "Station", "Base", "Hub", "Terminal", "Complex", "Nexus", "Citadel" };
         
         return $"{prefixes[random.Next(prefixes.Length)]} {suffixes[random.Next(suffixes.Length)]}";
     }
@@ -102,6 +214,7 @@ public class GalaxySector
     public int Z { get; set; }
     public List<AsteroidData> Asteroids { get; set; } = new();
     public StationData? Station { get; set; }
+    public MassiveAsteroidData? MassiveAsteroid { get; set; }  // NEW: Rare claimable asteroid
     public List<ShipData> Ships { get; set; } = new();
 
     public GalaxySector(int x, int y, int z)
@@ -124,6 +237,23 @@ public class StationData
     public Vector3 Position { get; set; }
     public string StationType { get; set; } = "Trading";
     public string Name { get; set; } = "Unknown Station";
+    public int BlockCount { get; set; }  // NEW: Track block count
+    public List<Vector3> DockingPoints { get; set; } = new();  // NEW: Docking locations
+    public List<string> Facilities { get; set; } = new();  // NEW: Available facilities
+    public Guid EntityId { get; set; }  // NEW: Link to actual entity
+}
+
+/// <summary>
+/// Data for massive claimable asteroids
+/// </summary>
+public class MassiveAsteroidData
+{
+    public Vector3 Position { get; set; }
+    public MassiveAsteroidType Type { get; set; }
+    public int BlockCount { get; set; }
+    public Vector3 LandingZone { get; set; }
+    public List<Vector3> DockingPoints { get; set; } = new();
+    public Guid EntityId { get; set; }
 }
 
 public class ShipData
